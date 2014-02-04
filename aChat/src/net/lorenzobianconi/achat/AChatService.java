@@ -4,7 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
 import android.app.Service;
@@ -41,7 +43,6 @@ public class AChatService extends Service {
 				break;
 			case MSG_UNREGISTER_CMD:
 				_aChatMess = null;
-				_sock = null;
 				break;
 			default:
 				super.handleMessage(msg);
@@ -49,9 +50,15 @@ public class AChatService extends Service {
 		}
 	}
 	/**
+	 * Achat server address info
+	 */
+	final static int ACHAT_PORT = 9999;
+	final static String ACHAT_URI = "lorenet.dyndns.org";
+	private SocketAddress _achatServer = null;
+	/**
 	 * Network socket
 	 */
-	private Socket _sock = null;
+	private Socket _sock = new Socket();
 	/**
 	 * Public target for AChat messages
 	 */
@@ -79,22 +86,27 @@ public class AChatService extends Service {
 	
 	public void onDestroy() {
 		try {
-			if (_sock != null && _sock.isConnected())
+			if (_sock.isConnected())
 				_sock.close();
 		} catch (IOException e) {}
 	}
 	
 	private void connect() {
 		try {
-			_sock = new Socket("lorenet.dyndns.org", 9999);
-			if (_sock.isConnected()) {
-				/**
-				 * Start reader loop
-				 */
-				startReader(_sock);
-				
-			}
-		} catch (IOException e) {}
+			_achatServer = new InetSocketAddress(ACHAT_URI, ACHAT_PORT);
+			if (!_sock.isConnected())
+				_sock.connect(_achatServer);
+			/**
+			 * Start reader loop
+			 */
+			startReader(_sock);
+		} catch (IOException e) {
+			Message msg = Message.obtain(null, AchatActivity.MSG_CONN_ERR);
+			try {
+				_aChatMess.send(msg);
+				stopSelf();
+			} catch (RemoteException re) {}
+		}
 	}
 	
 	private void startReader(Socket sock) {
@@ -112,13 +124,14 @@ public class AChatService extends Service {
 			while (true) {
 				char[] c_header = new char[AChatMessage.ACHAT_HDR_LEN];
 				/* get chat header */
-				ib.read(c_header);
+				if (ib.read(c_header) < 0)
+					continue;
 				String cheader = new String(c_header); 
 				ByteBuffer ChatHeader = ByteBuffer.wrap(cheader.getBytes());
 				int type = ChatHeader.getInt();
 				int datalen = ChatHeader.getInt();
 				if (datalen < 0 || !AChatMessage.checkType(type))
-					break;
+					continue;
 				char[] c_data = new char[datalen];
 				ib.read(c_data);
 				ByteBuffer data = ByteBuffer.wrap(new String(c_data).getBytes());
@@ -126,7 +139,11 @@ public class AChatService extends Service {
 				_aChatMess.send(msg);
 			}
 		} catch (IOException e) {
-		} catch (RemoteException e) {
-		}
+			Message msg = Message.obtain(null, AchatActivity.MSG_CONN_ERR);
+			try {
+				_aChatMess.send(msg);
+				stopSelf();
+			} catch (RemoteException re) {}
+		} catch (RemoteException e) {}
 	}
 }

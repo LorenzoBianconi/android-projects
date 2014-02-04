@@ -4,6 +4,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -56,6 +57,7 @@ public class AchatActivity extends FragmentActivity {
 	 */
 	static final int MSG_RX_FRM = 0;
 	static final int MSG_SET_SOCK = 1;
+	static final int MSG_CONN_ERR = 2;
     /**
      * Handler of incoming messages from AChatService
      */
@@ -73,6 +75,9 @@ public class AchatActivity extends FragmentActivity {
     			if (_sock != null && _sock.isConnected())
     				AChatMessage.sendMsg(_sock, _nick, "",
     									 AChatMessage.ACHAT_AUTH_REQ);
+    			break;
+    		case MSG_CONN_ERR:
+    			showAlert("ERROR", "Connection to server failed");
     			break;
     		default:
     			super.handleMessage(msg);
@@ -214,14 +219,18 @@ public class AchatActivity extends FragmentActivity {
 			while (buff.remaining() > 0)
 				buff.get(data);
 			String text = new String(data, Charset.defaultCharset());
-			_uChatFrag.appendText(user, text, AChatMessage.ACHAT_DATA);
+			displayText(user, text, AChatMessage.ACHAT_DATA);
 			break;
 		case AChatMessage.ACHAT_USER_SUMMARY:
+			ArrayList<String> userList = new ArrayList<String>();
 			while (buff.remaining() > 0) {
 				int ulen = buff.getInt();
 				byte[] unick = new byte[ulen];
 				buff.get(unick);
+				userList.add(new String(unick, Charset.defaultCharset()));
 			}
+			_uListFrag.updateUserList(userList);
+			break;
 		default:
 			break;
 		}
@@ -239,4 +248,7 @@ public class AchatActivity extends FragmentActivity {
 		AChatMessage.sendMsg(_sock, _nick, text, AChatMessage.ACHAT_DATA);
 	}
 	
+	public void displayText(String user, String text, int type) {
+		_uChatFrag.appendText(user, text, type);
+	}
 }
