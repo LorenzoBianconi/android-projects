@@ -4,9 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
 import android.app.Service;
@@ -36,10 +34,11 @@ public class AChatService extends Service {
 			switch(msg.what) {
 			case MSG_REGISTER_CMD:
 				_aChatMess = msg.replyTo;
+				_sock = (Socket)msg.obj;
 				/**
-				 * Start network connection
+				 * Start network reader
 				 */
-				connect();
+				startReader(_sock);
 				break;
 			case MSG_UNREGISTER_CMD:
 				_aChatMess = null;
@@ -50,15 +49,9 @@ public class AChatService extends Service {
 		}
 	}
 	/**
-	 * Achat server address info
-	 */
-	final static int ACHAT_PORT = 9999;
-	final static String ACHAT_URI = "lorenet.dyndns.org";
-	private SocketAddress _achatServer = null;
-	/**
 	 * Network socket
 	 */
-	private Socket _sock = new Socket();
+	private Socket _sock = null;
 	/**
 	 * Public target for AChat messages
 	 */
@@ -80,33 +73,11 @@ public class AChatService extends Service {
 		return _aChatServiceMess.getBinder();
 	}
 	
-	public int onStartCommand(Intent intent, int flags, int startId) {
-		return START_STICKY;
-	}
-	
-	public void onDestroy() {
+	private void sendActivityMsg(int type, int arg1, int arg2, Object obj) {
 		try {
-			if (_sock.isConnected())
-				_sock.close();
-		} catch (IOException e) {}
-	}
-	
-	private void connect() {
-		try {
-			_achatServer = new InetSocketAddress(ACHAT_URI, ACHAT_PORT);
-			if (!_sock.isConnected())
-				_sock.connect(_achatServer);
-			/**
-			 * Start reader loop
-			 */
-			startReader(_sock);
-		} catch (IOException e) {
-			Message msg = Message.obtain(null, AchatActivity.MSG_CONN_ERR);
-			try {
-				_aChatMess.send(msg);
-				stopSelf();
-			} catch (RemoteException re) {}
-		}
+			Message msg = Message.obtain(null, type, arg1, arg2, obj);
+			_aChatMess.send(msg);
+		} catch (RemoteException e) {}
 	}
 	
 	private void startReader(Socket sock) {
@@ -114,12 +85,6 @@ public class AChatService extends Service {
 			InputStream stream = sock.getInputStream();
 			InputStreamReader isr = new InputStreamReader(stream);
 			BufferedReader ib = new BufferedReader(isr);
-			/**
-			 * Set socket in AchatActivity
-			 */
-			Message msg = Message.obtain(null, AchatActivity.MSG_SET_SOCK,
-					 					 _sock);
-			_aChatMess.send(msg);
 
 			while (true) {
 				char[] c_header = new char[AChatMessage.ACHAT_HDR_LEN];
@@ -135,15 +100,11 @@ public class AChatService extends Service {
 				char[] c_data = new char[datalen];
 				ib.read(c_data);
 				ByteBuffer data = ByteBuffer.wrap(new String(c_data).getBytes());
-				msg = Message.obtain(null, AchatActivity.MSG_RX_FRM, type, 0, data);
-				_aChatMess.send(msg);
+				sendActivityMsg(AchatActivity.MSG_RX_FRM, type, 0, data);
 			}
 		} catch (IOException e) {
-			Message msg = Message.obtain(null, AchatActivity.MSG_CONN_ERR);
-			try {
-				_aChatMess.send(msg);
-				stopSelf();
-			} catch (RemoteException re) {}
-		} catch (RemoteException e) {}
+			if (_sock.isClosed() == false)
+				sendActivityMsg(AchatActivity.MSG_CONN_ERR, 0, 0, null);
+		}
 	}
 }

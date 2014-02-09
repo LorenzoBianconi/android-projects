@@ -1,7 +1,9 @@
 package net.lorenzobianconi.achat;
 
-import java.io.UnsupportedEncodingException;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -21,11 +23,12 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.Parcelable;
 import android.os.RemoteException;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.view.Menu;
 import android.widget.Toast;
@@ -34,11 +37,14 @@ public class AchatActivity extends FragmentActivity {
 	/**
 	 * Page adapter implementation
 	 */
-	class PageAdatper extends FragmentPagerAdapter {
+	class PageAdatper extends FragmentStatePagerAdapter {
 		private List <Fragment> _fragments;
 		public PageAdatper(FragmentManager fm, List<Fragment> fragments) {
 			super(fm);
 			_fragments = fragments;
+		}
+		public Parcelable saveState() {
+			return null;
 		}
 		public Fragment getItem(int position) {
 			return _fragments.get(position);
@@ -67,15 +73,6 @@ public class AchatActivity extends FragmentActivity {
     		case MSG_RX_FRM:
     			parseMsg((ByteBuffer)msg.obj, msg.arg1);
     			break;
-    		case MSG_SET_SOCK:
-    			_sock = (Socket)msg.obj;
-    			/**
-    			 * Server authentication
-    			 */
-    			if (_sock != null && _sock.isConnected())
-    				AChatMessage.sendMsg(_sock, _nick, "",
-    									 AChatMessage.ACHAT_AUTH_REQ);
-    			break;
     		case MSG_CONN_ERR:
     			showAlert("ERROR", "Connection to server failed");
     			break;
@@ -87,34 +84,51 @@ public class AchatActivity extends FragmentActivity {
 	/**
 	 * Class for interacting with the main interface of the AChatService
 	 */
-    class AChatServiceConnection implements  ServiceConnection {
+    class AChatServiceConnection implements ServiceConnection {
 		public void onServiceConnected(ComponentName name, IBinder service) {
-			_aChatServiceMess = new Messenger(service);
-			_aChatBound = true;
-			sendServiceMsg(AChatService.MSG_REGISTER_CMD);
+			try {
+				_aChatServiceMess = new Messenger(service);
+				connect();
+				_aChatBound = true;
+				sendMessage(_aChatServiceMess, AChatService.MSG_REGISTER_CMD,
+							0, 0, _sock);
+    			/**
+    			 * Server authentication
+    			 */
+    			AChatMessage.sendMsg(_sock, _nick, "", AChatMessage.ACHAT_AUTH_REQ);
+			} catch (IOException e) {
+				showAlert("ERROR", "Connection to server failed");
+			}
 		}
 
 		public void onServiceDisconnected(ComponentName name) {
 			_aChatServiceMess = null;
 			_aChatBound = false;
+			showAlert("ERROR", "Connection to server failed");
 		}
 	};
-
 	/**
 	 * User nickname
 	 */
 	public String _nick = "lorenzo";
 	/**
+	 * AChat server address info
+	 */
+	final static int ACHAT_PORT = 9999;
+	final static String ACHAT_URI = "lorenet.dyndns.org";
+	private SocketAddress _achatServer = null;
+	/**
 	 * Network socket
 	 */
-	private Socket _sock = null;
+	private Socket _sock = new Socket();
 	private ServiceConnection _aChatConn = null;
+	private boolean _onLine = false;
     /**
      * Public target for AChatService messages
      */
     public Messenger _aChatMess = null;
 	/**
-	 * Messenger for tx messages to AChatService
+	 * Messenger for TX messages to AChatService
 	 */
 	private Messenger _aChatServiceMess = null;
 	/**
@@ -122,32 +136,28 @@ public class AchatActivity extends FragmentActivity {
 	 */
 	private boolean _aChatBound = false;
 	/**
-	 * UI fragments
+	 * UI page adapter
 	 */
-	UserChatFragment _uChatFrag = null;
-	UserListFragment _uListFrag = null;
+	PageAdatper _pAdapter = null;
 	
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_achat);
 		List<Fragment> fragments = new Vector<Fragment>();
-		_uChatFrag = new UserChatFragment();
-		_uListFrag = new UserListFragment();
-		fragments.add(_uChatFrag);
-		fragments.add(_uListFrag);
-		PageAdatper pAdapter = new PageAdatper(super.getSupportFragmentManager(),
-											   fragments);
+		fragments.add(new UserChatFragment());
+		fragments.add(new UserListFragment());
+		
+		_pAdapter = new PageAdatper(super.getSupportFragmentManager(), fragments);
 		ViewPager vPager = (ViewPager)findViewById(R.id.view_pager);
-		vPager.setAdapter(pAdapter);
+		vPager.setAdapter(_pAdapter);
 		vPager.setPageMargin(20);
 		/**
 		 * Start AChatService if NetworkConnection is available
 		 */
-		if (isOnLine()) {
+		_onLine = isOnLine();
+		if (_onLine == true) {
 			_aChatConn = new AChatServiceConnection();
 			_aChatMess = new Messenger(new IncomingHandler());
-			Intent intent = new Intent(this, AChatService.class);
-			startService(intent);
 		} else
 			showAlert("WARNING", "Network Connection not available");
 	}
@@ -159,17 +169,20 @@ public class AchatActivity extends FragmentActivity {
 	
 	protected void onStart() {
 		super.onStart();
-		if (_aChatConn != null)
+		if (_onLine == true)
 			bindService(new Intent(this, AChatService.class),
 						_aChatConn, Context.BIND_AUTO_CREATE);
 	}
 	
 	protected void onStop() {
 		super.onStop();
-		if (_aChatBound) {
-			unbindService(_aChatConn);
-			_aChatBound = false;
-		}
+		try {
+			if (_aChatBound == true) {
+				unbindService(_aChatConn);
+				_aChatBound = false;
+			}
+			_sock.close();
+		} catch (IOException e) {}
 	}
 	
 	private boolean isOnLine() {
@@ -186,15 +199,20 @@ public class AchatActivity extends FragmentActivity {
 		 alertDialog.setNeutralButton("OK", new DialogInterface.OnClickListener() {
 			 public void onClick(DialogInterface dialog, int which) {
 				 dialog.cancel();
+				 if (_aChatBound == true)
+					 unbindService(_aChatConn);
 				 finish();
 			 }
 		 });
 		 alertDialog.show();
 	}
 	
+	public void displayText(String user, String text, int type) {
+		UserChatFragment uChatFrag = (UserChatFragment)_pAdapter.getItem(0);
+		uChatFrag.appendText(user, text, type);
+	}
 	/**
-	 * Parse Achat message payload
-	 * @throws UnsupportedEncodingException 
+	 * Parse AChat message payload
 	 */
 	public void parseMsg(ByteBuffer buff, int type) {
 		int nickLen = buff.getInt();
@@ -229,26 +247,29 @@ public class AchatActivity extends FragmentActivity {
 				buff.get(unick);
 				userList.add(new String(unick, Charset.defaultCharset()));
 			}
-			_uListFrag.updateUserList(userList);
+			UserListFragment uListFrag = (UserListFragment)_pAdapter.getItem(1);
+			uListFrag.updateUserList(userList);
 			break;
 		default:
 			break;
 		}
 	}
 	
-	private void sendServiceMsg(int type) {
+	private void connect() throws IOException {
+		_achatServer = new InetSocketAddress(ACHAT_URI, ACHAT_PORT);
+		_sock.connect(_achatServer);
+	}
+
+	private void sendMessage(Messenger messenger, int type, int arg1,
+							 int arg2, Object obj) {
 		try {
-			Message msg = Message.obtain(null, type);
+			Message msg = Message.obtain(null, type, arg1, arg2, obj);
 			msg.replyTo = _aChatMess;
 			_aChatServiceMess.send(msg);
 		} catch (RemoteException e) {}
 	}
-	
+
 	public void sendText(String text) {
 		AChatMessage.sendMsg(_sock, _nick, text, AChatMessage.ACHAT_DATA);
-	}
-	
-	public void displayText(String user, String text, int type) {
-		_uChatFrag.appendText(user, text, type);
 	}
 }

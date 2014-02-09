@@ -18,9 +18,9 @@ import android.widget.TextView;
 public class UserChatFragment extends Fragment implements OnClickListener {
 	private static final String CHAT_HISTORY_KEY = "CHAT_HISTORY";
 	
-	private EditText _msgEdit;
-	private TextView _chatText;
-	private AchatActivity _parent;
+	private EditText _msgEdit = null;
+	private TextView _chatText = null;
+	private AchatActivity _parent = null;
 
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 							 Bundle savedInstanceState) {	

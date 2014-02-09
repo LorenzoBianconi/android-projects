@@ -12,8 +12,6 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 public class UserListFragment extends Fragment {
-	private static final String USER_LIST_KEY = "USER_LIST";
-	
 	private AchatActivity _parent = null;
 	
 	private ListView _userListView = null;
@@ -35,14 +33,6 @@ public class UserListFragment extends Fragment {
 		super.onAttach(activity);
 		_parent = (AchatActivity)activity;
 	}
-    
-    public void onSaveInstanceState(Bundle state) {
-        super.onSaveInstanceState(state);
-    }
-    
-    public void onActivityCreated(Bundle savedInstanceState) {
-    	super.onActivityCreated(savedInstanceState);
-    }
     
     public void updateUserList(ArrayList<String> userList) {
        	for (int i = 0; i < _userList.size(); i++) {
