@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 public class UserChatFragment extends Fragment implements OnClickListener {
@@ -21,6 +22,7 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 	private EditText _msgEdit = null;
 	private TextView _chatText = null;
 	private AchatActivity _parent = null;
+	private ScrollView _scroll = null;
 
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 							 Bundle savedInstanceState) {	
@@ -28,6 +30,7 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 
 		_msgEdit = (EditText)view.findViewById(R.id.msgTextEdit);
 		_chatText = (TextView)view.findViewById(R.id.userChatTextView);
+		_scroll = (ScrollView)view.findViewById(R.id.userChatScrollView);
 		
 		Button sndButton = (Button)view.findViewById(R.id.msgSendButton);
 		sndButton.setOnClickListener(this);
@@ -83,6 +86,7 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 		Spannable msgtoSpan = new SpannableString(msg);
 		msgtoSpan.setSpan(new ForegroundColorSpan(color), 0, msgtoSpan.length(),
 						  Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+		_scroll.fullScroll(View.FOCUS_DOWN);
 		_chatText.append(msgtoSpan);
     }
 }
