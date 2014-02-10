@@ -18,6 +18,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -59,6 +60,45 @@ public class AchatActivity extends FragmentActivity {
 		}
 	}
 	/**
+	 * AChatServer connector
+	 */
+	private class AChatServerConn extends AsyncTask<Void, Void, Socket> {
+		/**
+		 * AChat server address info
+		 */
+		final static int ACHAT_PORT = 9999;
+		final static String ACHAT_URI = "lorenet.dyndns.org";
+		private SocketAddress _achatServer = null;
+		private Socket sock = new Socket();
+		
+		protected void onPreExecute() {
+			 _sock = new Socket();
+		}
+		protected Socket doInBackground(Void... arg0) {
+			try {
+				_achatServer = new InetSocketAddress(ACHAT_URI, ACHAT_PORT);
+				sock.connect(_achatServer);
+				return sock;
+			} catch (IOException e) {
+				return null;
+			}
+		}
+		protected void onPostExecute(Socket sock) {
+			if (sock != null) {
+				_sock = sock;
+				_aChatBound = true;
+				sendMessage(_aChatServiceMess, AChatService.MSG_REGISTER_CMD,
+						0, 0, sock);
+				/**
+				 * Server authentication
+				 */
+				AChatMessage.sendMsg(sock, _nick, "",
+									 AChatMessage.ACHAT_AUTH_REQ);
+			} else
+				showAlert("ERROR", "Connection to server failed");
+		}
+	}
+	/**
 	 * Message type
 	 */
 	static final int MSG_RX_FRM = 0;
@@ -86,19 +126,8 @@ public class AchatActivity extends FragmentActivity {
 	 */
     class AChatServiceConnection implements ServiceConnection {
 		public void onServiceConnected(ComponentName name, IBinder service) {
-			try {
-				_aChatServiceMess = new Messenger(service);
-				connect();
-				_aChatBound = true;
-				sendMessage(_aChatServiceMess, AChatService.MSG_REGISTER_CMD,
-							0, 0, _sock);
-    			/**
-    			 * Server authentication
-    			 */
-    			AChatMessage.sendMsg(_sock, _nick, "", AChatMessage.ACHAT_AUTH_REQ);
-			} catch (IOException e) {
-				showAlert("ERROR", "Connection to server failed");
-			}
+			_aChatServiceMess = new Messenger(service);
+			new AChatServerConn().execute();
 		}
 
 		public void onServiceDisconnected(ComponentName name) {
@@ -112,15 +141,9 @@ public class AchatActivity extends FragmentActivity {
 	 */
 	public String _nick = "lorenzo";
 	/**
-	 * AChat server address info
-	 */
-	final static int ACHAT_PORT = 9999;
-	final static String ACHAT_URI = "lorenet.dyndns.org";
-	private SocketAddress _achatServer = null;
-	/**
 	 * Network socket
 	 */
-	private Socket _sock = new Socket();
+	private Socket _sock = null;
 	private ServiceConnection _aChatConn = null;
 	private boolean _onLine = false;
     /**
@@ -253,11 +276,6 @@ public class AchatActivity extends FragmentActivity {
 		default:
 			break;
 		}
-	}
-	
-	private void connect() throws IOException {
-		_achatServer = new InetSocketAddress(ACHAT_URI, ACHAT_PORT);
-		_sock.connect(_achatServer);
 	}
 
 	private void sendMessage(Messenger messenger, int type, int arg1,
