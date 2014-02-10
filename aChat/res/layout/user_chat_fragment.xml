@@ -10,12 +10,22 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".UserChatFragment" >
 
+    <Button
+        android:id="@+id/msgSendButton"
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:text="@string/send_button" />
+    
     <ScrollView
         android:id="@+id/userChatScrollView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/msgSendButton"
         android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true">
+        android:layout_alignParentTop="true" >
 
         <TextView
             android:id="@+id/userChatTextView"
@@ -24,28 +34,16 @@
             android:textAppearance="?android:attr/textAppearanceMedium" />
     </ScrollView>
 
-    <LinearLayout
-        android:id="@+id/userChatMsgLayout"
+    <EditText
+        android:id="@+id/msgTextEdit"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true" >
+        android:layout_alignBottom="@+id/msgSendButton"
+        android:layout_toLeftOf="@+id/msgSendButton"
+        android:ems="10"
+        android:hint="@string/msg_hint" >
 
-        <EditText
-            android:id="@+id/msgTextEdit"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_weight="1"
-            android:ems="10"
-            android:hint="@string/msg_hint" />
-
-        <Button
-            android:id="@+id/msgSendButton"
-            style="?android:attr/buttonStyleSmall"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="0"
-            android:text="@string/send_button" />
-    </LinearLayout>
-
+        <requestFocus />
+    </EditText>
+    
 </RelativeLayout>
