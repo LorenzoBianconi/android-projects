@@ -1,7 +1,6 @@
 package net.lorenzobianconi.achat;
 
 import java.util.ArrayList;
-
 import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
