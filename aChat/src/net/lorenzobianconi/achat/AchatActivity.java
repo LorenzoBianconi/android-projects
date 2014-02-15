@@ -29,12 +29,11 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
-import android.os.Parcelable;
 import android.os.RemoteException;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.view.Menu;
 import android.widget.Toast;
@@ -44,14 +43,11 @@ public class AchatActivity extends FragmentActivity
 	/**
 	 * Page adapter implementation
 	 */
-	class PageAdatper extends FragmentStatePagerAdapter {
+	class PageAdatper extends FragmentPagerAdapter {
 		private List <Fragment> _fragments;
 		public PageAdatper(FragmentManager fm, List<Fragment> fragments) {
 			super(fm);
 			_fragments = fragments;
-		}
-		public Parcelable saveState() {
-			return null;
 		}
 		public Fragment getItem(int position) {
 			return _fragments.get(position);
@@ -169,19 +165,37 @@ public class AchatActivity extends FragmentActivity
 	 * UI page adapter
 	 */
 	PageAdatper _pAdapter = null;
+	ViewPager _vPager = null;
+	/**
+	 * Fragments references
+	 */
+	UserChatFragment _userChatFrag = null;
+	UserListFragment _userListFrag = null;
 	
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_achat);
 
-		List<Fragment> fragments = new Vector<Fragment>();
-		fragments.add(new UserChatFragment());
-		fragments.add(new UserListFragment());
+		_vPager = (ViewPager)findViewById(R.id.view_pager);
+		_vPager.setPageMargin(20);
+		int id = _vPager.getId();
 
-		_pAdapter = new PageAdatper(super.getSupportFragmentManager(), fragments);
-		ViewPager vPager = (ViewPager)findViewById(R.id.view_pager);
-		vPager.setAdapter(_pAdapter);
-		vPager.setPageMargin(20);
+		if (savedInstanceState != null) {
+			_userChatFrag = (UserChatFragment)getSupportFragmentManager().findFragmentByTag(
+											"android:switcher:" + id + ":0");
+			_userListFrag = (UserListFragment)getSupportFragmentManager().findFragmentByTag(
+											"android:switcher:" + id + ":1");
+		} else {
+			_userChatFrag = new UserChatFragment();
+			_userListFrag = new UserListFragment();
+		}
+
+		List<Fragment> fragments = new Vector<Fragment>();
+		fragments.add(_userChatFrag);
+		fragments.add(_userListFrag);
+
+		_pAdapter = new PageAdatper(getSupportFragmentManager(), fragments);
+		_vPager.setAdapter(_pAdapter);
 		/**
 		 * Start AChatService if NetworkConnection is available
 		 */
@@ -197,7 +211,7 @@ public class AchatActivity extends FragmentActivity
 		getMenuInflater().inflate(R.menu.achat, menu);
 		return true;
 	}
-	
+
 	protected void onStart() {
 		super.onStart();
 		if (_onLine == true) {
