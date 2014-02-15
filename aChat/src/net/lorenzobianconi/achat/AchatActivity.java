@@ -10,12 +10,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
+import net.lorenzobianconi.achat.UserChatFragment.UserChatListener;
+import net.lorenzobianconi.achat.UserListFragment.UserListListener;
+import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -34,7 +39,8 @@ import android.support.v4.view.ViewPager;
 import android.view.Menu;
 import android.widget.Toast;
 
-public class AchatActivity extends FragmentActivity {
+public class AchatActivity extends FragmentActivity
+	implements UserChatListener, UserListListener {
 	/**
 	 * Page adapter implementation
 	 */
@@ -92,8 +98,7 @@ public class AchatActivity extends FragmentActivity {
 				/**
 				 * Server authentication
 				 */
-				AChatMessage.sendMsg(sock, _nick, "",
-									 AChatMessage.ACHAT_AUTH_REQ);
+				AChatMessage.sendMsg(sock, _nick, "", AChatMessage.ACHAT_AUTH_REQ);
 			} else
 				showAlert("ERROR", "Connection to server failed");
 		}
@@ -136,10 +141,12 @@ public class AchatActivity extends FragmentActivity {
 			showAlert("ERROR", "Connection to server failed");
 		}
 	};
+
+	private final static String PREFS_NICK = "NICK";
 	/**
 	 * User nickname
 	 */
-	public String _nick = "lorenzo";
+	public String _nick = null;
 	/**
 	 * Network socket
 	 */
@@ -166,10 +173,11 @@ public class AchatActivity extends FragmentActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_achat);
+
 		List<Fragment> fragments = new Vector<Fragment>();
 		fragments.add(new UserChatFragment());
 		fragments.add(new UserListFragment());
-		
+
 		_pAdapter = new PageAdatper(super.getSupportFragmentManager(), fragments);
 		ViewPager vPager = (ViewPager)findViewById(R.id.view_pager);
 		vPager.setAdapter(_pAdapter);
@@ -192,9 +200,14 @@ public class AchatActivity extends FragmentActivity {
 	
 	protected void onStart() {
 		super.onStart();
-		if (_onLine == true)
+		if (_onLine == true) {
+			SharedPreferences prefs = getSharedPreferences(PREFS_NICK,
+													Context.MODE_PRIVATE);
+			_nick = prefs.getString("NICK", getAccount().name);
 			bindService(new Intent(this, AChatService.class),
 						_aChatConn, Context.BIND_AUTO_CREATE);
+			prefs.edit().putString("NICK", _nick);
+		}
 	}
 	
 	protected void onStop() {
@@ -287,7 +300,21 @@ public class AchatActivity extends FragmentActivity {
 		} catch (RemoteException e) {}
 	}
 
+	public Account getAccount() {
+		AccountManager accountManager = AccountManager.get(this);
+		Account[] accounts = accountManager.getAccountsByType("com.google");
+
+		if (accounts.length > 0)
+			return accounts[0];
+		else
+			return null;
+	}
+
 	public void sendText(String text) {
 		AChatMessage.sendMsg(_sock, _nick, text, AChatMessage.ACHAT_DATA);
+	}
+
+	public String getNick() {
+		return _nick;
 	}
 }

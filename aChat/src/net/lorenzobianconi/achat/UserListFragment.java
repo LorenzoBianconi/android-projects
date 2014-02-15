@@ -35,13 +35,20 @@ public class UserListFragment extends Fragment {
 			TextView textView = (TextView)rowView.findViewById(R.id.txtTitle);
 			String user = _list.get(position);
 			textView.setText(user);
-			if (user.equals(_parent._nick) == true)
+			if (user.equals(_uListListener.getNick()) == true)
 				textView.setTextColor(Color.GREEN);
 			return rowView;
 		}
 	}
+	/**
+	 * AChatActivity interface
+	 */
+	public interface UserListListener {
+		public String getNick();
+        public void displayText(String user, String text, int type);
+	}
 	
-	private AchatActivity _parent = null;
+	private UserListListener _uListListener = null;
 	
 	private ListView _userListView = null;
 	private ArrayList<String> _userList = new ArrayList<String>();
@@ -63,7 +70,7 @@ public class UserListFragment extends Fragment {
     
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
-		_parent = (AchatActivity)activity;
+		_uListListener = (UserListListener)activity;
 	}
     
     public void updateUserList(ArrayList<String> userList) {
@@ -77,8 +84,8 @@ public class UserListFragment extends Fragment {
        	  		}
        	  	}
        	  	if (found == false) {
-       	  		_parent.displayText(user, " has left",
-       	  							AChatMessage.ACHAT_USER_SUMMARY);
+       	  		_uListListener.displayText(user, " has left",
+       	  						AChatMessage.ACHAT_USER_SUMMARY);
        	  		_listAdapter.remove(user);
        	  	}
        	}
@@ -91,7 +98,7 @@ public class UserListFragment extends Fragment {
    	  			}
    	  		}
    	  		if (found == false) {
-       	  		_parent.displayText(nuser, " has joined",
+   	  			_uListListener.displayText(nuser, " has joined",
  							AChatMessage.ACHAT_USER_SUMMARY);
    	  			_listAdapter.add(nuser);
    	  		}
