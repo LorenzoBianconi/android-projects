@@ -13,6 +13,6 @@
         android:textSize="22sp"
         android:textColor="#FFFFFF"
         android:padding="10dp"
-        android:text="@string/UserListHeader"
+        android:text="@string/user_list_header"
         android:background="#808080" />
 </LinearLayout>
