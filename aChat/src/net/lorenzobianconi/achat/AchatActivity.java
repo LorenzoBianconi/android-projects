@@ -217,7 +217,8 @@ public class AchatActivity extends FragmentActivity
 		if (_onLine == true) {
 			SharedPreferences prefs = getSharedPreferences(PREFS_NICK,
 													Context.MODE_PRIVATE);
-			_nick = prefs.getString("NICK", getAccount().name);
+			String nick = (getAccount() == null) ? "android" : getAccount().name;
+			_nick = prefs.getString("NICK", nick);
 			bindService(new Intent(this, AChatService.class),
 						_aChatConn, Context.BIND_AUTO_CREATE);
 			prefs.edit().putString("NICK", _nick);

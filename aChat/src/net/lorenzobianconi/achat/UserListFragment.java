@@ -61,9 +61,6 @@ public class UserListFragment extends Fragment {
         _userListView = (ListView)view.findViewById(R.id.userListView);
         _listAdapter = new UserListArrayAdapter(getActivity(), R.layout.listview_item_row,
         										_userList);
-        LayoutInflater inflat = getActivity().getLayoutInflater();
-        View header = (View)inflat.inflate(R.layout.listview_header_row, null);
-        _userListView.addHeaderView(header);
         _userListView.setAdapter(_listAdapter);
         return view;
 	}

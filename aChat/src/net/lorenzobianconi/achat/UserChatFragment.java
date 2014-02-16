@@ -1,12 +1,9 @@
 package net.lorenzobianconi.achat;
 
 import android.app.Activity;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.text.Spannable;
-import android.text.SpannableString;
-import android.text.style.ForegroundColorSpan;
+import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,6 +26,7 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 	private EditText _msgEdit = null;
 	private TextView _chatText = null;
 	private ScrollView _scroll = null;
+	private String _chatHistory = "";
 
 	private UserChatListener _uChatListener = null;
 
@@ -67,35 +65,28 @@ public class UserChatFragment extends Fragment implements OnClickListener {
     public void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
         
-        String msgHistory = _chatText.getText().toString();
-        state.putString(CHAT_HISTORY_KEY, msgHistory);
+        state.putString(CHAT_HISTORY_KEY, _chatHistory);
     }
     
     public void onActivityCreated(Bundle savedInstanceState) {
     	super.onActivityCreated(savedInstanceState);
     	
     	if (savedInstanceState != null) {
-    		String msgHistory = savedInstanceState.getString(CHAT_HISTORY_KEY);
-    		_chatText.setText(msgHistory);
+    		_chatHistory = savedInstanceState.getString(CHAT_HISTORY_KEY);
+    		_chatText.setText(Html.fromHtml(_chatHistory));
     	}
     }
     
     public void appendText(String user, String text, int type) {
-    	int color;
-    	String msg;
-    	
-    	if (type == AChatMessage.ACHAT_DATA) {
-    		msg = "<" + user + ">: " + text + "\n";
-    		color = (user.equals(_uChatListener.getNick())) ? Color.GREEN : Color.BLACK;
-    	} else {
-    		msg = "* " + user + text + "\n";
-    		color = Color.GRAY;
-    	}
-		
-		Spannable msgtoSpan = new SpannableString(msg);
-		msgtoSpan.setSpan(new ForegroundColorSpan(color), 0, msgtoSpan.length(),
-						  Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-		_scroll.fullScroll(View.FOCUS_DOWN);
-		_chatText.append(msgtoSpan);
+     	if (type == AChatMessage.ACHAT_DATA) {
+    		String msg = "&lt;" + user + "&gt; " + text;
+    		if (user.equals(_uChatListener.getNick()) == true)
+    			msg = "<font color='#00FF00'>" + msg + "</font>";
+    		_chatHistory += msg + "<br>";
+    	} else
+    		_chatHistory += "<font color='#FF00FF'><i>" + "* " + user +
+    						text + "</i></font><br>";
+     	_scroll.fullScroll(View.FOCUS_DOWN);
+     	_chatText.setText(Html.fromHtml(_chatHistory));
     }
 }
