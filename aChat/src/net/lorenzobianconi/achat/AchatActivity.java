@@ -31,14 +31,14 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.widget.Toast;
 
-public class AchatActivity extends FragmentActivity
+public class AchatActivity extends ActionBarActivity
 	implements UserChatListener, UserListListener {
 	/**
 	 * Page adapter implementation
@@ -209,7 +209,7 @@ public class AchatActivity extends FragmentActivity
 
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.achat, menu);
-		return true;
+		return super.onCreateOptionsMenu(menu);
 	}
 
 	protected void onStart() {
