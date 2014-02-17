@@ -7,9 +7,10 @@
     <uses-sdk
         android:minSdkVersion="7"
         android:targetSdkVersion="19" />
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.GET_ACCOUNTS"/>
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
 
     <application
         android:allowBackup="true"
@@ -18,13 +19,21 @@
         android:theme="@style/Theme.AppCompat" >
         <activity
             android:name="net.lorenzobianconi.achat.AchatActivity"
-            android:label="@string/app_name">
+            android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".AChatService"></service>
+
+        <service android:name="net.lorenzobianconi.achat.AChatService" >
+        </service>
+
+        <activity
+            android:name="net.lorenzobianconi.achat.AChatSettings"
+            android:label="@string/title_activity_achat_settings" >
+        </activity>
     </application>
 
 </manifest>

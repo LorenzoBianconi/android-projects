@@ -30,12 +30,14 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 public class AchatActivity extends ActionBarActivity
@@ -138,7 +140,6 @@ public class AchatActivity extends ActionBarActivity
 		}
 	};
 
-	private final static String PREFS_NICK = "NICK";
 	/**
 	 * User nickname
 	 */
@@ -171,7 +172,9 @@ public class AchatActivity extends ActionBarActivity
 	 */
 	UserChatFragment _userChatFrag = null;
 	UserListFragment _userListFrag = null;
-	
+
+	private static final int SETTINGS_RESULT = 1;
+
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_achat);
@@ -211,17 +214,38 @@ public class AchatActivity extends ActionBarActivity
 		getMenuInflater().inflate(R.menu.achat, menu);
 		return super.onCreateOptionsMenu(menu);
 	}
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+
+        case R.id.action_settings:
+            Intent i = new Intent(this, AChatSettings.class);
+            startActivityForResult(i, SETTINGS_RESULT);
+            break;
+        }
+        return true;
+    }
+    
+    protected void onActivityResult(int requestCode, int resultCode,
+    								Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        switch (requestCode) {
+        case SETTINGS_RESULT:
+            break;
+        } 
+    }
 
 	protected void onStart() {
 		super.onStart();
 		if (_onLine == true) {
-			SharedPreferences prefs = getSharedPreferences(PREFS_NICK,
-													Context.MODE_PRIVATE);
+			SharedPreferences sharedPrefs;
+
+			sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 			String nick = (getAccount() == null) ? "android" : getAccount().name;
-			_nick = prefs.getString("NICK", nick);
+			_nick = sharedPrefs.getString("NICK", nick);
 			bindService(new Intent(this, AChatService.class),
 						_aChatConn, Context.BIND_AUTO_CREATE);
-			prefs.edit().putString("NICK", _nick);
+			sharedPrefs.edit().putString("NICK", _nick);
 		}
 	}
 	

@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <string name="app_name">AndroidSimpleChat</string>
@@ -6,5 +7,10 @@
     <string name="msg_hint">Type New Message</string>
     <string name="medium_text">Medium Text</string>
     <string name="user_list_header">User List</string>
+    <string name="perf_user_profile">User Profile</string>
+    <string name="perf_nick_key">NICK</string>
+    <string name="perf_nick_name">Set Nick Name</string>
+    <string name="perf_nick_name_summary">Set AChat Nick Name</string>
+    <string name="title_activity_achat_settings">AChatSettings</string>
 
 </resources>
