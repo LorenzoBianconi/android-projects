@@ -245,7 +245,7 @@ public class AchatActivity extends ActionBarActivity
 			_nick = sharedPrefs.getString("NICK", nick);
 			bindService(new Intent(this, AChatService.class),
 						_aChatConn, Context.BIND_AUTO_CREATE);
-			sharedPrefs.edit().putString("NICK", _nick);
+			sharedPrefs.edit().putString("NICK", _nick).commit();
 		}
 	}
 	
