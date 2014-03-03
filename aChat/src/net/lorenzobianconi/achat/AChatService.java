@@ -27,6 +27,7 @@ public class AChatService extends Service {
 	static final int MSG_REGISTER_CMD = 0;
 	static final int MSG_UNREGISTER_CMD = 1;
 	static final int MSG_SEND_DATA = 2;
+	static final int MSG_GET_SUMMARY = 3;
 	/**
 	 * Handler for AChat Incoming messages
 	 */
@@ -46,6 +47,9 @@ public class AChatService extends Service {
 				AChatMessage.sendMsg(_sock, _nick, (String)msg.obj,
 									 AChatMessage.ACHAT_DATA);
 				break;
+			case MSG_GET_SUMMARY:
+				AChatMessage.sendMsg(_sock, _nick, "",
+									 AChatMessage.ACHAT_REQ_SUMMARY);
 			default:
 				super.handleMessage(msg);
 			}

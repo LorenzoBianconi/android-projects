@@ -88,6 +88,10 @@ public class AchatActivity extends ActionBarActivity
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			_aChatServiceMess = new Messenger(service);
 			sendMessage(AChatService.MSG_REGISTER_CMD, 0);
+			if (_getUserSummary == true) {
+				sendMessage(AChatService.MSG_GET_SUMMARY, 0);
+				_getUserSummary = false;
+			}
 		}
 
 		public void onServiceDisconnected(ComponentName name) {
@@ -113,6 +117,9 @@ public class AchatActivity extends ActionBarActivity
 	 * Flag indicating AChatService is bounded or not
 	 */
 	private boolean _aChatBound = false;
+	
+	private boolean _getUserSummary = false;
+	
 	/**
 	 * UI page adapter
 	 */
@@ -157,7 +164,8 @@ public class AchatActivity extends ActionBarActivity
 		if (isAChatServiceRunning() == false) {
 			Intent startService = new Intent(this, AChatService.class);
 			startService(startService);
-		}
+		} else
+			_getUserSummary = true;
 	}
 
 	public boolean onCreateOptionsMenu(Menu menu) {

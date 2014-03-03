@@ -17,6 +17,7 @@ public class AChatMessage {
 	static final int ACHAT_AUTH_REP = 1;
 	static final int ACHAT_DATA = 2;
 	static final int ACHAT_USER_SUMMARY = 3;
+	static final int ACHAT_REQ_SUMMARY = 4;
 	/**
 	 * AChat Authentication Reply results 
 	 */
