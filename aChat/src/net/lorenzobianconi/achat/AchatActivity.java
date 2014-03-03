@@ -1,9 +1,5 @@
 package net.lorenzobianconi.achat;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -14,6 +10,8 @@ import net.lorenzobianconi.achat.UserChatFragment.UserChatListener;
 import net.lorenzobianconi.achat.UserListFragment.UserListListener;
 import android.accounts.Account;
 import android.accounts.AccountManager;
+import android.app.ActivityManager;
+import android.app.ActivityManager.RunningServiceInfo;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
@@ -21,9 +19,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -64,44 +59,6 @@ public class AchatActivity extends ActionBarActivity
 		}
 	}
 	/**
-	 * AChatServer connector
-	 */
-	private class AChatServerConn extends AsyncTask<Void, Void, Socket> {
-		/**
-		 * AChat server address info
-		 */
-		final static int ACHAT_PORT = 9999;
-		final static String ACHAT_URI = "lorenet.dyndns.org";
-		private SocketAddress _achatServer = null;
-		private Socket sock = new Socket();
-		
-		protected void onPreExecute() {
-			 _sock = new Socket();
-		}
-		protected Socket doInBackground(Void... arg0) {
-			try {
-				_achatServer = new InetSocketAddress(ACHAT_URI, ACHAT_PORT);
-				sock.connect(_achatServer);
-				return sock;
-			} catch (IOException e) {
-				return null;
-			}
-		}
-		protected void onPostExecute(Socket sock) {
-			if (sock != null) {
-				_sock = sock;
-				_aChatBound = true;
-				sendMessage(_aChatServiceMess, AChatService.MSG_REGISTER_CMD,
-						0, 0, sock);
-				/**
-				 * Server authentication
-				 */
-				AChatMessage.sendMsg(sock, _nick, "", AChatMessage.ACHAT_AUTH_REQ);
-			} else
-				showAlert("ERROR", "Connection to server failed");
-		}
-	}
-	/**
 	 * Message type
 	 */
 	static final int MSG_RX_FRM = 0;
@@ -130,7 +87,7 @@ public class AchatActivity extends ActionBarActivity
     class AChatServiceConnection implements ServiceConnection {
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			_aChatServiceMess = new Messenger(service);
-			new AChatServerConn().execute();
+			sendMessage(AChatService.MSG_REGISTER_CMD, 0);
 		}
 
 		public void onServiceDisconnected(ComponentName name) {
@@ -139,17 +96,11 @@ public class AchatActivity extends ActionBarActivity
 			showAlert("ERROR", "Connection to server failed");
 		}
 	};
-
 	/**
 	 * User nickname
 	 */
 	public String _nick = null;
-	/**
-	 * Network socket
-	 */
-	private Socket _sock = null;
 	private ServiceConnection _aChatConn = null;
-	private boolean _onLine = false;
     /**
      * Public target for AChatService messages
      */
@@ -199,24 +150,23 @@ public class AchatActivity extends ActionBarActivity
 
 		_pAdapter = new PageAdatper(getSupportFragmentManager(), fragments);
 		_vPager.setAdapter(_pAdapter);
-		/**
-		 * Start AChatService if NetworkConnection is available
-		 */
-		_onLine = isOnLine();
-		if (_onLine == true) {
-			_aChatConn = new AChatServiceConnection();
-			_aChatMess = new Messenger(new IncomingHandler());
-		} else
-			showAlert("WARNING", "Network Connection not available");
+
+		_aChatConn = new AChatServiceConnection();
+		_aChatMess = new Messenger(new IncomingHandler());
+
+		if (isAChatServiceRunning() == false) {
+			Intent startService = new Intent(this, AChatService.class);
+			startService(startService);
+		}
 	}
 
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.achat, menu);
 		return super.onCreateOptionsMenu(menu);
 	}
+
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-
         case R.id.action_settings:
             Intent i = new Intent(this, AChatSettings.class);
             startActivityForResult(i, SETTINGS_RESULT);
@@ -237,34 +187,19 @@ public class AchatActivity extends ActionBarActivity
 
 	protected void onStart() {
 		super.onStart();
-		if (_onLine == true) {
-			SharedPreferences sharedPrefs;
 
-			sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-			String nick = (getAccount() == null) ? "android" : getAccount().name;
-			_nick = sharedPrefs.getString("NICK", nick);
-			bindService(new Intent(this, AChatService.class),
-						_aChatConn, Context.BIND_AUTO_CREATE);
-			sharedPrefs.edit().putString("NICK", _nick).commit();
-		}
+		_nick = updateNick(this);
+		bindService(new Intent(this, AChatService.class),
+					_aChatConn, Context.BIND_AUTO_CREATE);
 	}
 	
 	protected void onStop() {
 		super.onStop();
-		try {
-			if (_aChatBound == true) {
-				unbindService(_aChatConn);
-				_aChatBound = false;
-			}
-			_sock.close();
-		} catch (IOException e) {}
-	}
-	
-	private boolean isOnLine() {
-		ConnectivityManager connMgr = (ConnectivityManager)
-				getSystemService(Context.CONNECTIVITY_SERVICE);
-		NetworkInfo nInfo = connMgr.getActiveNetworkInfo();
-		return (nInfo != null && nInfo.isConnected());
+
+		if (_aChatBound == true) {
+			unbindService(_aChatConn);
+			_aChatBound = false;
+		}
 	}
 	
 	private void showAlert(String title, String msg) {
@@ -280,11 +215,6 @@ public class AchatActivity extends ActionBarActivity
 			 }
 		 });
 		 alertDialog.show();
-	}
-	
-	public void displayText(String user, String text, int type) {
-		UserChatFragment uChatFrag = (UserChatFragment)_pAdapter.getItem(0);
-		uChatFrag.appendText(user, text, type);
 	}
 	/**
 	 * Parse AChat message payload
@@ -330,17 +260,36 @@ public class AchatActivity extends ActionBarActivity
 		}
 	}
 
-	private void sendMessage(Messenger messenger, int type, int arg1,
-							 int arg2, Object obj) {
+	public void displayText(String user, String text, int type) {
+		UserChatFragment uChatFrag = (UserChatFragment)_pAdapter.getItem(0);
+		uChatFrag.appendText(user, text, type);
+	}
+
+	private void sendMessage(int type, Object obj) {
 		try {
-			Message msg = Message.obtain(null, type, arg1, arg2, obj);
+			Message msg = Message.obtain(null, type, obj);
 			msg.replyTo = _aChatMess;
 			_aChatServiceMess.send(msg);
 		} catch (RemoteException e) {}
 	}
 
-	public Account getAccount() {
-		AccountManager accountManager = AccountManager.get(this);
+	public void sendText(String text) {
+		sendMessage(AChatService.MSG_SEND_DATA, text);
+	}
+
+	private boolean isAChatServiceRunning() {
+		String aChatService = "net.lorenzobianconi.achat.AChatService";
+	    ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+	    for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+	        if (aChatService.equals(service.service.getClassName())) {
+	             return true;
+	        }
+	    }
+	    return false;
+	}
+
+	private static Account getAccount(Context context) {
+		AccountManager accountManager = AccountManager.get(context);
 		Account[] accounts = accountManager.getAccountsByType("com.google");
 
 		if (accounts.length > 0)
@@ -349,11 +298,15 @@ public class AchatActivity extends ActionBarActivity
 			return null;
 	}
 
-	public void sendText(String text) {
-		AChatMessage.sendMsg(_sock, _nick, text, AChatMessage.ACHAT_DATA);
-	}
-
 	public String getNick() {
 		return _nick;
+	}
+
+	public static String updateNick(Context context) {
+		SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+		String nick = (getAccount(context) == null) ? "android" : getAccount(context).name;
+		nick = sharedPrefs.getString("NICK", nick);
+		sharedPrefs.edit().putString("NICK", nick).commit();
+		return nick;
 	}
 }

@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
         android:allowBackup="true"
@@ -34,6 +35,14 @@
             android:name="net.lorenzobianconi.achat.AChatSettings"
             android:label="@string/title_activity_achat_settings" >
         </activity>
+        <receiver
+            android:name=".AChatServiceStarter"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+          		<action android:name="android.intent.action.BOOT_COMPLETED" />
+       		</intent-filter>
+        </receiver>
     </application>
 
 </manifest>
