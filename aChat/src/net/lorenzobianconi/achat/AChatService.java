@@ -28,6 +28,8 @@ public class AChatService extends Service {
 	static final int MSG_UNREGISTER_CMD = 1;
 	static final int MSG_SEND_DATA = 2;
 	static final int MSG_GET_SUMMARY = 3;
+	static final int MSG_TRY_CONNECT = 4;
+
 	/**
 	 * Handler for AChat Incoming messages
 	 */
@@ -35,32 +37,38 @@ public class AChatService extends Service {
 		public IncomingHandler(Looper looper) {
 			super(looper);
 		}
+
 		public void handleMessage(Message msg) {
 			switch(msg.what) {
 			case MSG_REGISTER_CMD:
 				_aChatMess = msg.replyTo;
+				if (_sock != null)
+					sendActivityMsg(AchatActivity.MSG_CONNECTED, 0, 0, null);
 				break;
 			case MSG_UNREGISTER_CMD:
 				_aChatMess = null;
 				break;
 			case MSG_SEND_DATA:
-				AChatMessage.sendMsg(_sock, _nick, (String)msg.obj,
-									 AChatMessage.ACHAT_DATA);
+				AChatMessage.sendMsg(_sock, _nick, (String)msg.obj, AChatMessage.ACHAT_DATA);
 				break;
 			case MSG_GET_SUMMARY:
-				AChatMessage.sendMsg(_sock, _nick, "",
-									 AChatMessage.ACHAT_REQ_SUMMARY);
+				AChatMessage.sendMsg(_sock, _nick, "", AChatMessage.ACHAT_REQ_SUMMARY);
+				break;
+			case MSG_TRY_CONNECT:
+				new AChatServerConn().execute();
+				break;
 			default:
 				super.handleMessage(msg);
 			}
 		}
 	}
+
 	/**
 	 * AChat frame reader
 	 */
 	class AChatReader implements Runnable {
-		boolean _running = false;
-		Socket _sock = null;
+		private boolean _running = false;
+		private Socket _sock = null;
 
 		AChatReader(Socket sock) {
 			_sock = sock;
@@ -81,8 +89,10 @@ public class AChatService extends Service {
 				while (_running == true) {
 					char[] c_header = new char[AChatMessage.ACHAT_HDR_LEN];
 					/* get chat header */
-					if (ib.read(c_header) < 0)
-						continue;
+					if (ib.read(c_header) < 0) {
+						_sock.close();
+						break;
+					}
 
 					String cheader = new String(c_header);
 					ByteBuffer ChatHeader = ByteBuffer.wrap(cheader.getBytes());
@@ -90,6 +100,7 @@ public class AChatService extends Service {
 					int datalen = ChatHeader.getInt();
 					if (datalen < 0 || !AChatMessage.checkType(type))
 						continue;
+
 					char[] c_data = new char[datalen];
 					ib.read(c_data);
 
@@ -97,11 +108,16 @@ public class AChatService extends Service {
 					sendActivityMsg(AchatActivity.MSG_RX_FRM, type, 0, data);
 				}
 			} catch (IOException e) {
-				if (_sock.isClosed() == false)
-					sendActivityMsg(AchatActivity.MSG_CONN_ERR, 0, 0, null);
+			} finally {
+				String info = "--- Connection to lorenzobianconi.net failed ---";
+				sendActivityMsg(AchatActivity.MSG_CONN_ERR, 0, 0, info);
+				Message msg = Message.obtain(null, MSG_TRY_CONNECT);
+				_aChatServiceHnadler.sendMessageDelayed(msg, DELAY_MS);
+				_sock = null;
 			}
 		}
 	}
+
 	/**
 	 * AChat server connection
 	 */
@@ -132,20 +148,42 @@ public class AChatService extends Service {
 		}
 
 		protected void onPostExecute(Socket sock) {
-			_sock = sock;
+			if (sock == null) {
+				String info = "--- Connection to lorenzobianconi.net failed ---";
+				int delay = _attemptCounter * DELAY_MS;
+				if (delay < MAX_DELAY_MS)
+					_attemptCounter++;
+				else
+					delay = MAX_DELAY_MS;
+				Message msg = Message.obtain(null, MSG_TRY_CONNECT);
+				_aChatServiceHnadler.sendMessageDelayed(msg, delay);
+				sendActivityMsg(AchatActivity.MSG_CONN_ERR, 0, 0, info);
+			} else {
+				_attemptCounter = 1;
+				_sock = sock;
+				sendActivityMsg(AchatActivity.MSG_CONNECTED, 0, 0, null);
+			}
 		}
 	}
 
+	private static final int MAX_DELAY_MS = 180000;
+	private static final int DELAY_MS = 15000;
+	/**
+	 * User nickname
+	 */
 	private String _nick = null;
+	
+	private int _attemptCounter = 1;
 	/**
 	 * Network socket
 	 */
 	private Socket _sock = null;
+	private IncomingHandler _aChatServiceHnadler = null;
 	/**
 	 * Public target for AChat messages
 	 */
-	public Messenger _aChatServiceMess;
-	private Looper _aChatServiceLooper;
+	public Messenger _aChatServiceMess = null;
+	private Looper _aChatServiceLooper = null;
 	/**
 	 * Messenger for communicating with AChat
 	 */
@@ -159,7 +197,8 @@ public class AChatService extends Service {
 		HandlerThread thread = new HandlerThread("AChatService");
 		thread.start();
 		_aChatServiceLooper = thread.getLooper();
-		_aChatServiceMess = new Messenger(new IncomingHandler(_aChatServiceLooper));
+		_aChatServiceHnadler = new IncomingHandler(_aChatServiceLooper);
+		_aChatServiceMess = new Messenger(_aChatServiceHnadler);
 	}
 	
 	public int onStartCommand(Intent intent, int flags, int startId) {
@@ -168,7 +207,6 @@ public class AChatService extends Service {
 		 * Start network connection
 		 */
 		new AChatServerConn().execute();
-
 		return START_STICKY;
 	}
 

@@ -12,10 +12,8 @@ import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
-import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
@@ -42,28 +40,34 @@ public class AchatActivity extends ActionBarActivity
 	 */
 	class PageAdatper extends FragmentPagerAdapter {
 		private List <Fragment> _fragments;
+
 		public PageAdatper(FragmentManager fm, List<Fragment> fragments) {
 			super(fm);
 			_fragments = fragments;
 		}
+
 		public Fragment getItem(int position) {
 			return _fragments.get(position);
 		}
+
 		public int getCount() {
 			return _fragments.size();
 		}
+
 		public float getPageWidth(int position) {
 			if (position == 0)
 				return 1;
 			return 0.75f;
 		}
 	}
+
 	/**
 	 * Message type
 	 */
 	static final int MSG_RX_FRM = 0;
-	static final int MSG_SET_SOCK = 1;
+	static final int MSG_CONNECTED = 1;
 	static final int MSG_CONN_ERR = 2;
+
     /**
      * Handler of incoming messages from AChatService
      */
@@ -73,14 +77,21 @@ public class AchatActivity extends ActionBarActivity
     		case MSG_RX_FRM:
     			parseMsg((ByteBuffer)msg.obj, msg.arg1);
     			break;
+    		case MSG_CONNECTED:
+    			_userChatFrag.enableButton(true);
+    			AchatActivity.this.sendMessage(AChatService.MSG_GET_SUMMARY, 0);
+    			break;
     		case MSG_CONN_ERR:
-    			showAlert("ERROR", "Connection to server failed");
+    			displayText("", (String)msg.obj, -1);
+    			_userListFrag.clearList();
+    			_userChatFrag.enableButton(false);
     			break;
     		default:
     			super.handleMessage(msg);
     		}
     	}
     }
+
 	/**
 	 * Class for interacting with the main interface of the AChatService
 	 */
@@ -88,18 +99,17 @@ public class AchatActivity extends ActionBarActivity
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			_aChatServiceMess = new Messenger(service);
 			sendMessage(AChatService.MSG_REGISTER_CMD, 0);
-			if (_getUserSummary == true) {
-				sendMessage(AChatService.MSG_GET_SUMMARY, 0);
-				_getUserSummary = false;
-			}
 		}
 
 		public void onServiceDisconnected(ComponentName name) {
 			_aChatServiceMess = null;
 			_aChatBound = false;
-			showAlert("ERROR", "Connection to server failed");
+			displayText("", "--- Connection to lorenzobianconi.net failed ---", -1);
+			_userListFrag.clearList();
 		}
 	};
+
+	private static final int SETTINGS_RESULT = 1;
 	/**
 	 * User nickname
 	 */
@@ -117,9 +127,7 @@ public class AchatActivity extends ActionBarActivity
 	 * Flag indicating AChatService is bounded or not
 	 */
 	private boolean _aChatBound = false;
-	
-	private boolean _getUserSummary = false;
-	
+		
 	/**
 	 * UI page adapter
 	 */
@@ -130,8 +138,6 @@ public class AchatActivity extends ActionBarActivity
 	 */
 	UserChatFragment _userChatFrag = null;
 	UserListFragment _userListFrag = null;
-
-	private static final int SETTINGS_RESULT = 1;
 
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -164,8 +170,7 @@ public class AchatActivity extends ActionBarActivity
 		if (isAChatServiceRunning() == false) {
 			Intent startService = new Intent(this, AChatService.class);
 			startService(startService);
-		} else
-			_getUserSummary = true;
+		}
 	}
 
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -210,20 +215,6 @@ public class AchatActivity extends ActionBarActivity
 		}
 	}
 	
-	private void showAlert(String title, String msg) {
-		 AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
-		 alertDialog.setTitle(title);
-		 alertDialog.setMessage(msg);
-		 alertDialog.setNeutralButton("OK", new DialogInterface.OnClickListener() {
-			 public void onClick(DialogInterface dialog, int which) {
-				 dialog.cancel();
-				 if (_aChatBound == true)
-					 unbindService(_aChatConn);
-				 finish();
-			 }
-		 });
-		 alertDialog.show();
-	}
 	/**
 	 * Parse AChat message payload
 	 */
@@ -237,7 +228,7 @@ public class AchatActivity extends ActionBarActivity
 		case AChatMessage.ACHAT_AUTH_REP:
 			int res = buff.getInt();
 			if (res != AChatMessage.AUTH_SUCC) {
-				showAlert("ERROR", "Authentication Failed");
+				displayText("", "--- Authentication failed ---", -1);
 				stopService(new Intent(this, AChatService.class));
 			} else {
 				Toast toast = Toast.makeText(this, "Connected to the Server",
@@ -315,6 +306,7 @@ public class AchatActivity extends ActionBarActivity
 		String nick = (getAccount(context) == null) ? "android" : getAccount(context).name;
 		nick = sharedPrefs.getString("NICK", nick);
 		sharedPrefs.edit().putString("NICK", nick).commit();
+		
 		return nick;
 	}
 }

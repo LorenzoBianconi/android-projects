@@ -69,6 +69,22 @@ public class UserListFragment extends Fragment {
 		super.onAttach(activity);
 		_uListListener = (UserListListener)activity;
 	}
+	
+	public void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        
+        state.putStringArrayList("arraylist", _userList);
+    }
+    
+    public void onActivityCreated(Bundle state) {
+    	super.onActivityCreated(state);
+    	
+    	if (state != null) {
+    		ArrayList<String> list = state.getStringArrayList("arraylist");
+    		for (String nuser : list)
+    			_listAdapter.add(nuser);
+    	}
+    }
     
     public void updateUserList(ArrayList<String> userList) {
        	for (int i = 0; i < _userList.size(); i++) {
@@ -100,5 +116,9 @@ public class UserListFragment extends Fragment {
    	  			_listAdapter.add(nuser);
    	  		}
    	  	}
+    }
+    
+    public void clearList() {
+    	_listAdapter.clear();
     }
 }

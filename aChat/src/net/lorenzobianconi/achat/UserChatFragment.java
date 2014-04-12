@@ -26,6 +26,7 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 	private EditText _msgEdit = null;
 	private TextView _chatText = null;
 	private ScrollView _scroll = null;
+	private Button _sndButton = null;
 	private String _chatHistory = "";
 
 	private UserChatListener _uChatListener = null;
@@ -38,8 +39,9 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 		_chatText = (TextView)view.findViewById(R.id.userChatTextView);
 		_scroll = (ScrollView)view.findViewById(R.id.userChatScrollView);
 		
-		Button sndButton = (Button)view.findViewById(R.id.msgSendButton);
-		sndButton.setOnClickListener(this);
+		_sndButton = (Button)view.findViewById(R.id.msgSendButton);
+		_sndButton.setOnClickListener(this);
+		_sndButton.setEnabled(false);
 
 		return view;
 	}
@@ -62,6 +64,10 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 		}
 	}
 	
+	public void enableButton(boolean enable) {
+		_sndButton.setEnabled(enable);
+	}
+	
     public void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
         
@@ -78,14 +84,22 @@ public class UserChatFragment extends Fragment implements OnClickListener {
     }
     
     public void appendText(String user, String text, int type) {
-     	if (type == AChatMessage.ACHAT_DATA) {
+    	switch (type) {
+    	case -1: /* Error */
+    		_chatHistory += "<font color='#FF0000'><i>" + text +
+    						"</i></font><br>";
+    		break;
+    	case AChatMessage.ACHAT_DATA:
     		String msg = "&lt;" + user + "&gt; " + text;
     		if (user.equals(_uChatListener.getNick()) == true)
     			msg = "<font color='#00FF00'>" + msg + "</font>";
     		_chatHistory += msg + "<br>";
-    	} else
+    		break;
+    	default: /* control message */
     		_chatHistory += "<font color='#FF00FF'><i>" + "* " + user +
-    						text + "</i></font><br>";
+			text + "</i></font><br>";
+    		break;
+    	}
      	_scroll.fullScroll(View.FOCUS_DOWN);
      	_chatText.setText(Html.fromHtml(_chatHistory));
     }
