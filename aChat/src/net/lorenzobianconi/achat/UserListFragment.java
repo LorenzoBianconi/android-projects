@@ -46,6 +46,7 @@ public class UserListFragment extends Fragment {
 	public interface UserListListener {
 		public String getNick();
         public void displayText(String user, String text, int type);
+        public void getNotification();
 	}
 	
 	private UserListListener _uListListener = null;
@@ -116,6 +117,7 @@ public class UserListFragment extends Fragment {
    	  			_listAdapter.add(nuser);
    	  		}
    	  	}
+   	  	_uListListener.getNotification();
     }
     
     public void clearList() {

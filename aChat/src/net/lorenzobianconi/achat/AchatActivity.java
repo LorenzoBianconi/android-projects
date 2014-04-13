@@ -98,7 +98,7 @@ public class AchatActivity extends ActionBarActivity
     class AChatServiceConnection implements ServiceConnection {
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			_aChatServiceMess = new Messenger(service);
-			sendMessage(AChatService.MSG_REGISTER_CMD, 0);
+			sendMessage(AChatService.MSG_REGISTER_CMD, _aChatMess);
 		}
 
 		public void onServiceDisconnected(ComponentName name) {
@@ -138,6 +138,8 @@ public class AchatActivity extends ActionBarActivity
 	 */
 	UserChatFragment _userChatFrag = null;
 	UserListFragment _userListFrag = null;
+	
+	private ArrayList<AChatNotification> _nArray = new ArrayList<AChatNotification>();
 
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -147,6 +149,8 @@ public class AchatActivity extends ActionBarActivity
 		_vPager.setPageMargin(20);
 		int id = _vPager.getId();
 
+		_nArray = getIntent().getParcelableArrayListExtra("NOTIFICATION");
+		
 		if (savedInstanceState != null) {
 			_userChatFrag = (UserChatFragment)getSupportFragmentManager().findFragmentByTag(
 											"android:switcher:" + id + ":0");
@@ -208,7 +212,7 @@ public class AchatActivity extends ActionBarActivity
 	
 	protected void onStop() {
 		super.onStop();
-
+		sendMessage(AChatService.MSG_UNREGISTER_CMD, 0);
 		if (_aChatBound == true) {
 			unbindService(_aChatConn);
 			_aChatBound = false;
@@ -267,7 +271,6 @@ public class AchatActivity extends ActionBarActivity
 	private void sendMessage(int type, Object obj) {
 		try {
 			Message msg = Message.obtain(null, type, obj);
-			msg.replyTo = _aChatMess;
 			_aChatServiceMess.send(msg);
 		} catch (RemoteException e) {}
 	}
@@ -308,5 +311,14 @@ public class AchatActivity extends ActionBarActivity
 		sharedPrefs.edit().putString("NICK", nick).commit();
 		
 		return nick;
+	}
+	
+	public void getNotification() {
+		if (_nArray != null) {
+			for (int i = 0; i < _nArray.size(); i++)
+				_userChatFrag.appendNotification(_nArray.get(i).getNick(),
+												 _nArray.get(i).getData());
+			_nArray.clear();
+		}
 	}
 }

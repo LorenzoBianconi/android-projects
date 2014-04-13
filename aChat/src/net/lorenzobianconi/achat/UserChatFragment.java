@@ -21,6 +21,7 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 	public interface UserChatListener {
 		public String getNick();
         public void sendText(String text);
+        public void getNotification();
 	}
 	
 	private EditText _msgEdit = null;
@@ -34,7 +35,6 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 							 Bundle savedInstanceState) {
 		View view = inflater.inflate(R.layout.user_chat_fragment, container, false);
-
 		_msgEdit = (EditText)view.findViewById(R.id.msgTextEdit);
 		_chatText = (TextView)view.findViewById(R.id.userChatTextView);
 		_scroll = (ScrollView)view.findViewById(R.id.userChatScrollView);
@@ -55,7 +55,8 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 		switch(view.getId()) {
 		case R.id.msgSendButton:
 			String text = _msgEdit.getText().toString();
-			appendText(_uChatListener.getNick(), text, AChatMessage.ACHAT_DATA);
+			appendText(_uChatListener.getNick(), text,
+					   AChatMessage.ACHAT_DATA);
 			_uChatListener.sendText(text);
 			_msgEdit.setText("");
 			break;
@@ -82,7 +83,7 @@ public class UserChatFragment extends Fragment implements OnClickListener {
     		_chatText.setText(Html.fromHtml(_chatHistory));
     	}
     }
-    
+
     public void appendText(String user, String text, int type) {
     	switch (type) {
     	case -1: /* Error */
@@ -100,6 +101,12 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 			text + "</i></font><br>";
     		break;
     	}
+     	_scroll.fullScroll(View.FOCUS_DOWN);
+     	_chatText.setText(Html.fromHtml(_chatHistory));
+    }
+    
+    public void appendNotification(String user, String text) {
+		_chatHistory += ("&lt;" + user + "&gt; " + text + "<br>");
      	_scroll.fullScroll(View.FOCUS_DOWN);
      	_chatText.setText(Html.fromHtml(_chatHistory));
     }
