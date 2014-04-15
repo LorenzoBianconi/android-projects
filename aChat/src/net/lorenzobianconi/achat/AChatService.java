@@ -73,9 +73,11 @@ public class AChatService extends Service {
 	 */
 	static final int MSG_REGISTER_CMD = 0;
 	static final int MSG_UNREGISTER_CMD = 1;
-	static final int MSG_SEND_DATA = 2;
-	static final int MSG_GET_SUMMARY = 3;
-	static final int MSG_TRY_CONNECT = 4;
+	static final int MSG_SET_BACKGROUND = 2;
+	static final int MSG_SEND_DATA = 3;
+	static final int MSG_GET_SUMMARY = 4;
+	static final int MSG_TRY_CONNECT = 5;
+	static final int MSG_CHANGE_NICK = 6;
 
 	/**
 	 * Handler for AChat Incoming messages
@@ -95,8 +97,10 @@ public class AChatService extends Service {
 					sendActivityMsg(AchatActivity.MSG_CONNECTED, 0, 0, null);
 				break;
 			case MSG_UNREGISTER_CMD:
-				_foreground = false;
 				_aChatMess = null;
+				break;
+			case MSG_SET_BACKGROUND:
+				_foreground = false;
 				break;
 			case MSG_SEND_DATA:
 				AChatMessage.sendMsg(_sock, _nick, (String)msg.obj, AChatMessage.ACHAT_DATA);
@@ -107,6 +111,10 @@ public class AChatService extends Service {
 			case MSG_TRY_CONNECT:
 				new AChatServerConn().execute();
 				break;
+			case MSG_CHANGE_NICK:
+				_foreground = true;
+				AChatMessage.sendMsg(_sock, _nick, (String)msg.obj, AChatMessage.ACHAT_CHANGE_NICK);
+				_nick = (String)msg.obj;
 			default:
 				super.handleMessage(msg);
 			}
@@ -143,17 +151,14 @@ public class AChatService extends Service {
 						_sock.close();
 						break;
 					}
-
 					String cheader = new String(c_header);
 					ByteBuffer ChatHeader = ByteBuffer.wrap(cheader.getBytes());
 					int type = ChatHeader.getInt();
 					int datalen = ChatHeader.getInt();
 					if (datalen < 0 || !AChatMessage.checkType(type))
 						continue;
-
 					char[] c_data = new char[datalen];
 					ib.read(c_data);
-
 					ByteBuffer data = ByteBuffer.wrap(new String(c_data).getBytes());
 					if (_foreground == true)
 						sendActivityMsg(AchatActivity.MSG_RX_FRM, type, 0, data);

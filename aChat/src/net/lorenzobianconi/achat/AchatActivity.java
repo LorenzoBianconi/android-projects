@@ -195,16 +195,19 @@ public class AchatActivity extends ActionBarActivity
     protected void onActivityResult(int requestCode, int resultCode,
     								Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        
+    	SharedPreferences sharedPrefs;
+    	
+    	sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         switch (requestCode) {
         case SETTINGS_RESULT:
+			String nick = sharedPrefs.getString("NICK", _nick);
+			sendMessage(AChatService.MSG_CHANGE_NICK, nick);
             break;
         } 
     }
 
 	protected void onStart() {
 		super.onStart();
-
 		_nick = updateNick(this);
 		bindService(new Intent(this, AChatService.class),
 					_aChatConn, Context.BIND_AUTO_CREATE);
@@ -212,7 +215,7 @@ public class AchatActivity extends ActionBarActivity
 	
 	protected void onStop() {
 		super.onStop();
-		sendMessage(AChatService.MSG_UNREGISTER_CMD, 0);
+		sendMessage(AChatService.MSG_SET_BACKGROUND, 0);
 		if (_aChatBound == true) {
 			unbindService(_aChatConn);
 			_aChatBound = false;

@@ -18,6 +18,7 @@ public class AChatMessage {
 	static final int ACHAT_DATA = 2;
 	static final int ACHAT_USER_SUMMARY = 3;
 	static final int ACHAT_REQ_SUMMARY = 4;
+	static final int ACHAT_CHANGE_NICK = 5;
 	/**
 	 * AChat Authentication Reply results 
 	 */
@@ -51,6 +52,7 @@ public class AChatMessage {
 		switch (type) {
 		case ACHAT_AUTH_REQ:
 			break;
+		case ACHAT_CHANGE_NICK:
 		case ACHAT_DATA:
 			setData(msg, data);
 			break;
@@ -71,6 +73,6 @@ public class AChatMessage {
 	}
 	
 	public static boolean checkType(int type) {
-		return (type >= 0 && type <= 3);
+		return (type >= 0 && type <= 5);
 	}
 }
