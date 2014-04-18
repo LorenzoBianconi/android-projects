@@ -40,7 +40,7 @@ public class AChatMessage {
 	}
 	
 	public static String makeMsg(int type, String nick, String data) {
-		int dlen = 4 + nick.length() + data.length();
+		int dlen = 4 + nick.getBytes().length + data.getBytes().length;
 		byte[] buff = new byte[8 + dlen];
 		ByteBuffer msg = ByteBuffer.wrap(buff);
 		
