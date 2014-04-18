@@ -188,7 +188,7 @@ public class AChatService extends Service {
 		 * AChat server address info
 		 */
 		final static int ACHAT_PORT = 9999;
-		final static String ACHAT_URI = "lorenet.dyndns.org";
+		final static String ACHAT_URI = "lorenzobianconi.no-ip.org";
 
 		protected Socket doInBackground(Void... arg0) {
 			try {
