@@ -190,7 +190,7 @@ public class AChatService extends Service {
 		}
 	}
 
-	private static final int NOTIFICATION_ID = 1;
+	public static final int NOTIFICATION_ID = 1;
 	private static final int MAX_DELAY_MS = 180000;
 	private static final int DELAY_MS = 15000;
 	/**
@@ -284,6 +284,7 @@ public class AChatService extends Service {
 		} catch (IOException e) {}
 		
 		Intent intent = new Intent(this, AchatActivity.class);
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		PendingIntent pIntent = PendingIntent.getActivity(this, 0, intent,
 														  PendingIntent.FLAG_UPDATE_CURRENT);
 		mBuilder.setContentIntent(pIntent);	

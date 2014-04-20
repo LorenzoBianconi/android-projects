@@ -12,6 +12,7 @@ import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
+import android.app.NotificationManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -79,6 +80,7 @@ public class AchatActivity extends ActionBarActivity
     			break;
     		case MSG_CONNECTED:
     			_userChatFrag.enableButton(true);
+    			AchatActivity.this.sendMessage(AChatService.MSG_SET_BACKGROUND, false);
     			AchatActivity.this.sendMessage(AChatService.MSG_GET_SUMMARY, 0);
     			break;
     		case MSG_CONN_ERR:
@@ -98,7 +100,6 @@ public class AchatActivity extends ActionBarActivity
     class AChatServiceConnection implements ServiceConnection {
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			_aChatServiceMess = new Messenger(service);
-			sendMessage(AChatService.MSG_SET_BACKGROUND, false);
 			sendMessage(AChatService.MSG_REGISTER_CMD, _aChatMess);
 		}
 
@@ -214,6 +215,11 @@ public class AchatActivity extends ActionBarActivity
 	protected void onStart() {
 		super.onStart();
 
+		NotificationManager nm;
+
+		nm = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+		nm.cancel(AChatService.NOTIFICATION_ID);
+		sendMessage(AChatService.MSG_SET_BACKGROUND, false);
 		_nick = updateNick(this);
 		bindService(new Intent(this, AChatService.class),
 					_aChatConn, Context.BIND_AUTO_CREATE);
@@ -281,7 +287,8 @@ public class AchatActivity extends ActionBarActivity
 	private void sendMessage(int type, Object obj) {
 		try {
 			Message msg = Message.obtain(null, type, obj);
-			_aChatServiceMess.send(msg);
+			if (_aChatServiceMess!= null)
+				_aChatServiceMess.send(msg);
 		} catch (RemoteException e) {}
 	}
 
