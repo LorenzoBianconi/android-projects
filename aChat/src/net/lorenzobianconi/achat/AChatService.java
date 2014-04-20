@@ -284,6 +284,7 @@ public class AChatService extends Service {
 		} catch (IOException e) {}
 		
 		Intent intent = new Intent(this, AchatActivity.class);
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		PendingIntent pIntent = PendingIntent.getActivity(this, 0, intent,
 														  PendingIntent.FLAG_UPDATE_CURRENT);
 		mBuilder.setContentIntent(pIntent);	

@@ -20,6 +20,9 @@
         android:theme="@style/Theme.AppCompat" >
         <activity
             android:name="net.lorenzobianconi.achat.AchatActivity"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
