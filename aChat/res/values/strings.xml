@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <string name="app_name">AndroidSimpleChat</string>
@@ -11,6 +10,10 @@
     <string name="perf_nick_key">NICK</string>
     <string name="perf_nick_name">Set Nick Name</string>
     <string name="perf_nick_name_summary">Set AChat Nick Name</string>
+    <string name="perf_history_profile">History Profile</string>
+    <string name="perf_depth_key">DEPTH</string>
+    <string name="perf_depth_history">Set History Depth</string>
+    <string name="perf_depth_history_summary">Set AChat History Depth</string>
     <string name="title_activity_achat_settings">AChatSettings</string>
 
 </resources>

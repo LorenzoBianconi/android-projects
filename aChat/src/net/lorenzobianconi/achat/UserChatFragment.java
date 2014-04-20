@@ -1,7 +1,17 @@
 package net.lorenzobianconi.achat;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
 import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.Html;
 import android.view.LayoutInflater;
@@ -13,27 +23,27 @@ import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-public class UserChatFragment extends Fragment implements OnClickListener {
-	private static final String CHAT_HISTORY_KEY = "CHAT_HISTORY";
+public class UserChatFragment extends Fragment
+	implements OnClickListener {
 	/**
 	 * AChatActivity interface
 	 */
 	public interface UserChatListener {
 		public String getNick();
         public void sendText(String text);
-        public void getNotification();
 	}
-	
-	private EditText _msgEdit = null;
-	private TextView _chatText = null;
-	private ScrollView _scroll = null;
-	private Button _sndButton = null;
+		
+	private EditText _msgEdit;
+	private TextView _chatText;
+	private ScrollView _scroll;
+	private Button _sndButton;
+	private int _historyDepth;
 	private String _chatHistory = "";
 
-	private UserChatListener _uChatListener = null;
+	private UserChatListener _uChatListener;
 
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
-							 Bundle savedInstanceState) {
+							 Bundle state) {
 		View view = inflater.inflate(R.layout.user_chat_fragment, container, false);
 		_msgEdit = (EditText)view.findViewById(R.id.msgTextEdit);
 		_chatText = (TextView)view.findViewById(R.id.userChatTextView);
@@ -48,6 +58,11 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 	
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
+
+		SharedPreferences sharedPrefs;
+		
+		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(activity);
+		_historyDepth = Integer.parseInt(sharedPrefs.getString("DEPTH", "45"));
 		_uChatListener = (UserChatListener)activity;
 	}
 
@@ -69,44 +84,63 @@ public class UserChatFragment extends Fragment implements OnClickListener {
 		_sndButton.setEnabled(enable);
 	}
 	
-    public void onSaveInstanceState(Bundle state) {
-        super.onSaveInstanceState(state);
-        
-        state.putString(CHAT_HISTORY_KEY, _chatHistory);
-    }
+	public void setDepth(int depth) {
+		_historyDepth = depth;
+	}
+
+    public void onStart() {
+    	super.onStart();
+
+    	try {
+    		String line;
+			FileInputStream iS = getActivity().openFileInput("CHAT_HISTORY");
+			BufferedReader br = new BufferedReader(new InputStreamReader(iS));
+
+			while ((line = br.readLine()) != null)
+				_chatHistory += line; 
+			iS.close();
+			
+    		String [] historyArray = _chatHistory.split("<br>");
+    		if (historyArray.length >= _historyDepth) {
+    			_chatHistory = "";
+        		for (int i = historyArray.length - _historyDepth;
+        			 i < historyArray.length; i++)
+        			_chatHistory += historyArray[i] + "<br>";
+    		}
+	     	_scroll.fullScroll(View.FOCUS_DOWN);
+	     	_chatText.setText(Html.fromHtml(_chatHistory));	     	
+		} catch (FileNotFoundException e) {
+		} catch (IOException e) {}
+     }
     
-    public void onActivityCreated(Bundle savedInstanceState) {
-    	super.onActivityCreated(savedInstanceState);
-    	
-    	if (savedInstanceState != null) {
-    		_chatHistory = savedInstanceState.getString(CHAT_HISTORY_KEY);
-    		_chatText.setText(Html.fromHtml(_chatHistory));
-    	}
+    public void onStop() {
+    	super.onStop();
+
+    	try {
+    		/* save AChat History */
+    		FileOutputStream oS;
+    		
+    		oS = getActivity().openFileOutput("CHAT_HISTORY", Context.MODE_PRIVATE);
+    		oS.write(_chatHistory.getBytes());
+    		oS.close();
+		} catch (FileNotFoundException e) {
+		} catch (IOException e) {}
     }
 
     public void appendText(String user, String text, int type) {
     	switch (type) {
-    	case -1: /* Error */
-    		_chatHistory += "<font color='#FF0000'><i>" + text +
-    						"</i></font><br>";
-    		break;
-    	case AChatMessage.ACHAT_DATA:
+    	case AChatMessage.ACHAT_DATA: {
     		String msg = "&lt;" + user + "&gt; " + text;
     		if (user.equals(_uChatListener.getNick()) == true)
     			msg = "<font color='#00FF00'>" + msg + "</font>";
-    		_chatHistory += msg + "<br>";
-    		break;
-    	default: /* control message */
-    		_chatHistory += "<font color='#FF00FF'><i>" + "* " + user +
-			text + "</i></font><br>";
+    		_chatHistory += (msg + "<br>");
     		break;
     	}
-     	_scroll.fullScroll(View.FOCUS_DOWN);
-     	_chatText.setText(Html.fromHtml(_chatHistory));
-    }
-    
-    public void appendNotification(String user, String text) {
-		_chatHistory += ("&lt;" + user + "&gt; " + text + "<br>");
+    	default: /* control message */
+    		_chatHistory += "<font color='#FF00FF'><i>* " + text +
+					"</i></font><br>";
+    		break;
+    	}
      	_scroll.fullScroll(View.FOCUS_DOWN);
      	_chatText.setText(Html.fromHtml(_chatHistory));
     }

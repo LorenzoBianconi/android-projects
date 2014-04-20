@@ -98,14 +98,15 @@ public class AchatActivity extends ActionBarActivity
     class AChatServiceConnection implements ServiceConnection {
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			_aChatServiceMess = new Messenger(service);
+			sendMessage(AChatService.MSG_SET_BACKGROUND, false);
 			sendMessage(AChatService.MSG_REGISTER_CMD, _aChatMess);
 		}
 
 		public void onServiceDisconnected(ComponentName name) {
 			_aChatServiceMess = null;
 			_aChatBound = false;
-			displayText("", "--- Connection to lorenzobianconi.net failed ---", -1);
 			_userListFrag.clearList();
+			displayText("", "connection to lorenzobianconi.net failed", -1);
 		}
 	};
 
@@ -139,17 +140,14 @@ public class AchatActivity extends ActionBarActivity
 	UserChatFragment _userChatFrag = null;
 	UserListFragment _userListFrag = null;
 	
-	private ArrayList<AChatNotification> _nArray = new ArrayList<AChatNotification>();
-
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
 		setContentView(R.layout.activity_achat);
 
 		_vPager = (ViewPager)findViewById(R.id.view_pager);
 		_vPager.setPageMargin(20);
 		int id = _vPager.getId();
-
-		_nArray = getIntent().getParcelableArrayListExtra("NOTIFICATION");
 		
 		if (savedInstanceState != null) {
 			_userChatFrag = (UserChatFragment)getSupportFragmentManager().findFragmentByTag(
@@ -189,25 +187,33 @@ public class AchatActivity extends ActionBarActivity
             startActivityForResult(i, SETTINGS_RESULT);
             break;
         }
+
         return true;
     }
     
     protected void onActivityResult(int requestCode, int resultCode,
     								Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-    	SharedPreferences sharedPrefs;
+
+        SharedPreferences sharedPrefs;
     	
     	sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         switch (requestCode) {
         case SETTINGS_RESULT:
-			String nick = sharedPrefs.getString("NICK", _nick);
-			sendMessage(AChatService.MSG_CHANGE_NICK, nick);
+        	String nick = sharedPrefs.getString("NICK", _nick);
+			if (nick != _nick)
+				sendMessage(AChatService.MSG_CHANGE_NICK, nick);
+			String depth = sharedPrefs.getString("DEPTH", "45");
+			_userChatFrag.setDepth(Integer.parseInt(depth));
+			sharedPrefs.edit().putString("DEPTH", depth).commit();
+			sendMessage(AChatService.MSG_SET_BACKGROUND, false);
             break;
         } 
     }
 
 	protected void onStart() {
 		super.onStart();
+
 		_nick = updateNick(this);
 		bindService(new Intent(this, AChatService.class),
 					_aChatConn, Context.BIND_AUTO_CREATE);
@@ -215,7 +221,8 @@ public class AchatActivity extends ActionBarActivity
 	
 	protected void onStop() {
 		super.onStop();
-		sendMessage(AChatService.MSG_SET_BACKGROUND, 0);
+
+		sendMessage(AChatService.MSG_SET_BACKGROUND, true);
 		if (_aChatBound == true) {
 			unbindService(_aChatConn);
 			_aChatBound = false;
@@ -235,7 +242,7 @@ public class AchatActivity extends ActionBarActivity
 		case AChatMessage.ACHAT_AUTH_REP:
 			int res = buff.getInt();
 			if (res != AChatMessage.AUTH_SUCC) {
-				displayText("", "--- Authentication failed ---", -1);
+				displayText("", "authentication failed", -1);
 				stopService(new Intent(this, AChatService.class));
 			} else {
 				Toast toast = Toast.makeText(this, "Connected to the Server",
@@ -314,14 +321,5 @@ public class AchatActivity extends ActionBarActivity
 		sharedPrefs.edit().putString("NICK", nick).commit();
 		
 		return nick;
-	}
-	
-	public void getNotification() {
-		if (_nArray != null) {
-			for (int i = 0; i < _nArray.size(); i++)
-				_userChatFrag.appendNotification(_nArray.get(i).getNick(),
-												 _nArray.get(i).getData());
-			_nArray.clear();
-		}
 	}
 }

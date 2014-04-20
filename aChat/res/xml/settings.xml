@@ -5,4 +5,11 @@
             				android:title="@string/perf_nick_name"
             				android:summary="@string/perf_nick_name_summary"/>
     </PreferenceCategory>
+    <PreferenceCategory android:title="@string/perf_history_profile">
+        <ListPreference android:key="@string/perf_depth_key"
+            			android:summary="@string/perf_depth_history_summary"
+            			android:title="@string/perf_depth_history"
+            			android:entries="@array/historyDepth"
+            			android:entryValues="@array/historyDepthValues"/>
+    </PreferenceCategory>
 </PreferenceScreen>

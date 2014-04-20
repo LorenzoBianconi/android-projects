@@ -1,6 +1,8 @@
 package net.lorenzobianconi.achat;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -9,11 +11,11 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -24,48 +26,8 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.os.RemoteException;
 import android.support.v4.app.NotificationCompat;
-
-class AChatNotification implements Parcelable {
-	private String _nick;
-	private String _data;
-
-	AChatNotification(String nick, String data) {
-		_nick = nick;
-		_data = data;
-	}
-
-	AChatNotification(Parcel in) {
-		_nick = in.readString();
-		_data = in.readString();
-	}
-
-	String getNick() { return _nick; }
-	String getData() { return _data; }
-
-	public static final Parcelable.Creator<AChatNotification> CREATOR
-	= new Parcelable.Creator<AChatNotification>() {
-		public AChatNotification createFromParcel(Parcel in) {
-			return new AChatNotification(in);
-		}
-
-		public AChatNotification[] newArray (int size) {
-			return new AChatNotification[size];
-		}
-	};
-
-	public int describeContents() {
-		return 0;
-	}
-
-	public void writeToParcel(Parcel dest, int flags) {
-		dest.writeString(_nick);
-		dest.writeString(_data);
-	}
-}
 
 public class AChatService extends Service {
 	/**
@@ -90,8 +52,6 @@ public class AChatService extends Service {
 		public void handleMessage(Message msg) {
 			switch(msg.what) {
 			case MSG_REGISTER_CMD:
-				_foreground = true;
-				_nArray.clear();
 				_aChatMess = (Messenger)msg.obj;
 				if (_sock != null)
 					sendActivityMsg(AchatActivity.MSG_CONNECTED, 0, 0, null);
@@ -100,20 +60,22 @@ public class AChatService extends Service {
 				_aChatMess = null;
 				break;
 			case MSG_SET_BACKGROUND:
-				_foreground = false;
+				_backbround = (Boolean)msg.obj;
 				break;
 			case MSG_SEND_DATA:
-				AChatMessage.sendMsg(_sock, _nick, (String)msg.obj, AChatMessage.ACHAT_DATA);
+				AChatMessage.sendMsg(_sock, _nick, (String)msg.obj,
+									 AChatMessage.ACHAT_DATA);
 				break;
 			case MSG_GET_SUMMARY:
-				AChatMessage.sendMsg(_sock, _nick, "", AChatMessage.ACHAT_REQ_SUMMARY);
+				AChatMessage.sendMsg(_sock, _nick, "",
+									 AChatMessage.ACHAT_REQ_SUMMARY);
 				break;
 			case MSG_TRY_CONNECT:
 				new AChatServerConn().execute();
 				break;
 			case MSG_CHANGE_NICK:
-				_foreground = true;
-				AChatMessage.sendMsg(_sock, _nick, (String)msg.obj, AChatMessage.ACHAT_CHANGE_NICK);
+				AChatMessage.sendMsg(_sock, _nick, (String)msg.obj,
+									 AChatMessage.ACHAT_CHANGE_NICK);
 				_nick = (String)msg.obj;
 			default:
 				super.handleMessage(msg);
@@ -160,7 +122,7 @@ public class AChatService extends Service {
 					char[] c_data = new char[datalen];
 					ib.read(c_data);
 					ByteBuffer data = ByteBuffer.wrap(new String(c_data).getBytes());
-					if (_foreground == true)
+					if (_backbround == false)
 						sendActivityMsg(AchatActivity.MSG_RX_FRM, type, 0, data);
 					else if (type == AChatMessage.ACHAT_DATA) {
 						/**
@@ -171,7 +133,7 @@ public class AChatService extends Service {
 				}
 			} catch (IOException e) {
 			} finally {
-				String info = "--- Connection to lorenzobianconi.net failed ---";
+				String info = "connection to lorenzobianconi.net failed";
 				sendActivityMsg(AchatActivity.MSG_CONN_ERR, 0, 0, info);
 				Message msg = Message.obtain(null, MSG_TRY_CONNECT);
 				_aChatServiceHnadler.sendMessageDelayed(msg, DELAY_MS);
@@ -211,7 +173,7 @@ public class AChatService extends Service {
 
 		protected void onPostExecute(Socket sock) {
 			if (sock == null) {
-				String info = "--- Connection to lorenzobianconi.net failed ---";
+				String info = "connection to lorenzobianconi.net failed";
 				int delay = _attemptCounter * DELAY_MS;
 				if (delay < MAX_DELAY_MS)
 					_attemptCounter++;
@@ -234,19 +196,19 @@ public class AChatService extends Service {
 	/**
 	 * User nickname
 	 */
-	private String _nick = null;
+	private String _nick;
 	
 	private int _attemptCounter = 1;
 	/**
 	 * Network socket
 	 */
 	private Socket _sock = null;
-	private IncomingHandler _aChatServiceHnadler = null;
+	private IncomingHandler _aChatServiceHnadler;
 	/**
 	 * Public target for AChat messages
 	 */
-	public Messenger _aChatServiceMess = null;
-	private Looper _aChatServiceLooper = null;
+	public Messenger _aChatServiceMess;
+	private Looper _aChatServiceLooper;
 	/**
 	 * Messenger for communicating with AChat
 	 */
@@ -254,11 +216,9 @@ public class AChatService extends Service {
 	/**
 	 * Frame reader
 	 */
-	private AChatReader _reader = null;
+	private AChatReader _reader;
 	
-	private boolean _foreground = false;
-	
-	private ArrayList<AChatNotification> _nArray = new ArrayList<AChatNotification>();
+	private boolean _backbround = true;
 	
 	public void onCreate() {
 		HandlerThread thread = new HandlerThread("AChatService");
@@ -313,11 +273,17 @@ public class AChatService extends Service {
 		
 		Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
 		mBuilder.setSound(soundUri);
-
-		_nArray.add(new AChatNotification(user, text));
+		
+    	try {
+    		/* save AChat History */
+    		String msg = "&lt;" + user + "&gt; " + text + "<br>";
+    		FileOutputStream oS = openFileOutput("CHAT_HISTORY", Context.MODE_APPEND);
+    		oS.write(msg.getBytes());
+    		oS.close();
+		} catch (FileNotFoundException e) {
+		} catch (IOException e) {}
 		
 		Intent intent = new Intent(this, AchatActivity.class);
-		intent.putParcelableArrayListExtra("NOTIFICATION", _nArray);
 		PendingIntent pIntent = PendingIntent.getActivity(this, 0, intent,
 														  PendingIntent.FLAG_UPDATE_CURRENT);
 		mBuilder.setContentIntent(pIntent);	
