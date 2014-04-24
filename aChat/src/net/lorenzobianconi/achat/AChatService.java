@@ -150,7 +150,7 @@ public class AChatService extends Service {
 		 * AChat server address info
 		 */
 		final static int ACHAT_PORT = 9999;
-		final static String ACHAT_URI = "lorenzobianconi.no-ip.org";
+		final static String ACHAT_URI = "achat.lorenzobianconi.net";
 
 		protected Socket doInBackground(Void... arg0) {
 			try {
