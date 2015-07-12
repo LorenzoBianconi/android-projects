@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">WWatcher</string>
+    <string name="action_settings">Settings</string>
+    <string name="bt_not_available">Bluetooth Stack not available</string>
+    <string name="bt_connection_info">Device not connected</string>
+    <string name="bt_start_scan">Scanning</string>
+    <string name="bt_disconnect">Disconnect</string>
+    <string name="bt_disabled">Bluetooth Disabled</string>
+    <string name="title_activity_btscan">Bluetooth Scan Result</string>
+    <string name="bt_dev_name">Device Nick</string>
+    <string name="bt_dev_addr">Device Address</string>
+    <string name="temp">Temperature</string>
+
+</resources>
