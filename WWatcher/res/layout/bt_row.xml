@@ -17,6 +17,8 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:text="@string/bt_dev_name"
+        android:textStyle="bold"
+        android:textSize="18sp"
         android:textColor="#ffffff" />
 
     <TextView
@@ -26,6 +28,8 @@
         android:layout_alignParentStart="true"
         android:layout_below="@+id/dev_name"
         android:text="@string/bt_dev_addr"
+        android:textStyle="bold"
+        android:textSize="18sp"
         android:textColor="#ffffff" />
 
 </RelativeLayout>
