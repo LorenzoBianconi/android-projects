@@ -200,7 +200,7 @@ public class WWatcher extends Activity {
 	private final static float RH_MAX_VALUE = 100f;
 
 	private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-	private static final long SAMPLING_TO = 10000;
+	private static final long SAMPLING_TO = 30000;
 	private boolean btEnabled;
 	private BluetoothAdapter btRadio;
 	private BtReceiver btReceiver;
