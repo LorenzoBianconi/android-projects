@@ -24,21 +24,18 @@
         android:textColor="#ffffff"
         android:text="@string/bt_connection_info" />
 
-    <LinearLayout
-        android:id="@+id/chart_layout"
-        android:orientation="vertical"
+    <ViewFlipper
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:layout_marginTop="10dp"
         android:layout_marginLeft="10dp"
         android:layout_marginRight="10dp"
-        android:layout_centerHorizontal="true">
+        android:id="@+id/sample_flipper">
 
         <FrameLayout
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"
-            android:layout_weight="1"
             android:layout_gravity="center">
 
             <view
@@ -48,26 +45,44 @@
                 app:animationMode="overdraw"
                 android:id="@+id/temp_view" />
 
-            <LinearLayout
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center"
                 android:layout_gravity="center"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:maxWidth="180dp"
-                    android:textStyle="bold"
-                    android:textColor="#ffffff"
-                    android:gravity="center"
-                    android:textSize="30sp"
-                    android:id="@+id/temp_tv"
-                    android:text="@string/temp"/>
-            </LinearLayout>
+                android:gravity="center"
+                android:maxWidth="180dp"
+                android:textStyle="bold"
+                android:textColor="#ffffff"
+                android:textSize="25sp"
+                android:id="@+id/temp_tv"
+                android:text="@string/temp"/>
         </FrameLayout>
-    </LinearLayout>
+
+        <FrameLayout
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_gravity="center">
+
+            <view
+                class="com.txusballesteros.widgets.FitChart"
+                style="@style/chart_style"
+                android:layout_gravity="center"
+                app:animationMode="overdraw"
+                android:id="@+id/rh_view" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxWidth="180dp"
+                android:textStyle="bold"
+                android:textColor="#ffffff"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:textSize="25sp"
+                android:id="@+id/rh_tv"
+                android:text="@string/rh"/>
+        </FrameLayout>
+    </ViewFlipper>
 
     <Button
         android:id="@+id/bt_scan_button"
@@ -101,6 +116,4 @@
         android:text="@string/bt_disconnect"
         android:textColor="#ffffff"
         android:textSize="20sp" />
-
-
 </LinearLayout>

@@ -25,10 +25,12 @@ import android.os.Message;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ViewFlipper;
 
 import com.txusballesteros.widgets.FitChart;
 import com.txusballesteros.widgets.FitChartValue;
@@ -37,27 +39,41 @@ public class WWatcher extends Activity {
 	private final String WWATCHER_TAG = "WWATCHER_TAG";
 
 	static final int RX_SAMPLE_MSG = 0;
+	static final int BT_DISCONNECTED_MSG = 1;
 	class WWHandler extends Handler {
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
-			case RX_SAMPLE_MSG:
-				byte[] samples = (byte[])msg.obj;
-				float temp = samples[0], rH = samples[1];
-				Log.d(WWATCHER_TAG, "temperature: " + temp + "C\trH: " + rH + "%");
-				Resources resources = getResources();
-				Collection<FitChartValue> tempValues = new ArrayList<>();
-				if (temp < 10)
-					tempValues.add(new FitChartValue(temp + 30, resources.getColor(R.color.cold_temp)));
-				else if (temp <= 25)
-					tempValues.add(new FitChartValue(temp + 30, resources.getColor(R.color.good_temp)));
-				else
-					tempValues.add(new FitChartValue(temp + 30, resources.getColor(R.color.hot_temp)));
-				tempChart.setValues(tempValues);
-				currTemp.setText(resources.getString(R.string.temp) + temp + "C");
-				break;
-			default:
-				super.handleMessage(msg);
-			}			
+				case RX_SAMPLE_MSG:
+					byte[] samples = (byte[])msg.obj;
+					float temp = samples[0], rH = samples[1];
+					Log.d(WWATCHER_TAG, "temperature: " + temp + "C rH: " + rH + "%");
+					Resources resources = getResources();
+					Collection<FitChartValue> tempValues = new ArrayList<>();
+					if (temp < 10)
+						tempValues.add(new FitChartValue(temp + 30, resources.getColor(R.color.cold_temp)));
+					else if (temp <= 25)
+						tempValues.add(new FitChartValue(temp + 30, resources.getColor(R.color.good_temp)));
+					else
+						tempValues.add(new FitChartValue(temp + 30, resources.getColor(R.color.hot_temp)));
+					tempChart.setValues(tempValues);
+					currTemp.setText(resources.getString(R.string.temp) + ":\n" + temp + "C");
+					Collection<FitChartValue> rHValues = new ArrayList<>();
+					if (rH < 40)
+						rHValues.add(new FitChartValue(rH, resources.getColor(R.color.low_rh)));
+					else if (temp <= 55)
+						rHValues.add(new FitChartValue(rH, resources.getColor(R.color.good_rh)));
+					else
+						rHValues.add(new FitChartValue(rH, resources.getColor(R.color.high_rh)));
+					rhChart.setValues(rHValues);
+					currRH.setText(resources.getString(R.string.rh) + ":\n"  + rH + "%");
+					break;
+				case BT_DISCONNECTED_MSG:
+					linkInfo.setText("Device not connected");
+					configureButton(true, false);
+					break;
+				default:
+					super.handleMessage(msg);
+			}
 		}
 	}
 
@@ -66,16 +82,16 @@ public class WWatcher extends Activity {
 			if (intent.getAction().equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
 				int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
 				switch (state) {
-				case BluetoothAdapter.STATE_OFF:
-					btEnabled = false;
-					configureButton(false, false);
-					break;
-				case BluetoothAdapter.STATE_ON:
-					btEnabled = true;
-					configureButton(true, false);
-					break;
-				default:
-					break;
+					case BluetoothAdapter.STATE_OFF:
+						btEnabled = false;
+						configureButton(false, false);
+						break;
+					case BluetoothAdapter.STATE_ON:
+						btEnabled = true;
+						configureButton(true, false);
+						break;
+					default:
+						break;
 				}
 			} else if (intent.getAction().equals(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)) {
 				btScanProgressDialog.dismiss();
@@ -167,6 +183,9 @@ public class WWatcher extends Activity {
 			} catch (IOException e) {
 				e.printStackTrace();
 			} catch (InterruptedException e) {
+			} finally {
+				Message msg = Message.obtain(handler, BT_DISCONNECTED_MSG);
+				msg.sendToTarget();
 			}
 		}
 	}
@@ -176,6 +195,9 @@ public class WWatcher extends Activity {
 
 	private final static float TEMP_MIN_VALUE = 0f;
 	private final static float TEMP_MAX_VALUE = 80f;
+
+	private final static float RH_MIN_VALUE = 0f;
+	private final static float RH_MAX_VALUE = 100f;
 
 	private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 	private static final long SAMPLING_TO = 10000;
@@ -192,7 +214,11 @@ public class WWatcher extends Activity {
 	private Button scanButton;
 	private TextView linkInfo;
 	private TextView currTemp;
+	private TextView currRH;
 	private FitChart tempChart;
+	private FitChart rhChart;
+	private ViewFlipper sampleFlipper;
+	private float lastX;
 
 
 	protected void onCreate(Bundle savedInstanceState) {
@@ -201,14 +227,20 @@ public class WWatcher extends Activity {
 
 		linkInfo = (TextView)findViewById(R.id.link_info);
 		currTemp = (TextView)findViewById(R.id.temp_tv);
+		currRH = (TextView)findViewById(R.id.rh_tv);
 		tempChart = (FitChart)findViewById(R.id.temp_view);
 		tempChart.setMinValue(TEMP_MIN_VALUE);
 		tempChart.setMaxValue(TEMP_MAX_VALUE);
+		rhChart = (FitChart)findViewById(R.id.rh_view);
+		rhChart.setMinValue(RH_MIN_VALUE);
+		rhChart.setMaxValue(RH_MAX_VALUE);
+		sampleFlipper = (ViewFlipper)findViewById(R.id.sample_flipper);
 		disconButton = (Button)findViewById(R.id.bt_disconnect_button);
 		disconButton.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				try {
 					linkInfo.setText("Device not connected");
+					configureButton(true, false);
 					btSock.close();
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -266,21 +298,49 @@ public class WWatcher extends Activity {
 		return super.onOptionsItemSelected(item);
 	}
 
+	public boolean onTouchEvent(MotionEvent touchevent) {
+		switch (touchevent.getAction()) {
+			case MotionEvent.ACTION_DOWN:
+				lastX = touchevent.getX();
+				break;
+			case MotionEvent.ACTION_UP:
+				float currentX = touchevent.getX();
+				if (lastX < currentX) {
+					/* Handling left to right screen swap */
+					if (sampleFlipper.getDisplayedChild() == 0)
+						break;
+					sampleFlipper.setInAnimation(this, R.anim.slide_in_from_left);
+					sampleFlipper.setOutAnimation(this, R.anim.slide_out_to_right);
+					sampleFlipper.showNext();
+				} else {
+					/* Handling right to left screen swap */
+					if (sampleFlipper.getDisplayedChild() == 1)
+						break;
+
+					sampleFlipper.setInAnimation(this, R.anim.slide_in_from_right);
+					sampleFlipper.setOutAnimation(this, R.anim.slide_out_to_left);
+					sampleFlipper.showPrevious();
+				}
+				break;
+		}
+		return false;
+	}
+
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		switch (requestCode) {
-		case REQ_ENABLE_BT:
-			boolean btEnabled = (resultCode == RESULT_OK);
-			configureButton(btEnabled, false);
-			break;
-		case REQ_PICK_DEV:
-			if (data != null) {
-				String addr = data.getExtras().getString("device");
-				BluetoothDevice device = inqMap.get(addr);
-				new BtConnect().execute(device);
-			}
-			break;
-		default:
-			break;
+			case REQ_ENABLE_BT:
+				boolean btEnabled = (resultCode == RESULT_OK);
+				configureButton(btEnabled, false);
+				break;
+			case REQ_PICK_DEV:
+				if (data != null) {
+					String addr = data.getExtras().getString("device");
+					BluetoothDevice device = inqMap.get(addr);
+					new BtConnect().execute(device);
+				}
+				break;
+			default:
+				break;
 		}
 	}
 

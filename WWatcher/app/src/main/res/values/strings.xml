@@ -12,5 +12,6 @@
     <string name="bt_dev_name">Device Nick</string>
     <string name="bt_dev_addr">Device Address</string>
     <string name="temp">Temperature</string>
+    <string name="rh">Relative Humidity</string>
 
 </resources>

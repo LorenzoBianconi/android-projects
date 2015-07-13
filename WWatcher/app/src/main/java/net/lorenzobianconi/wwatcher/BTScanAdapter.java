@@ -31,9 +31,9 @@ class WWDevice implements Serializable {
 
 public class BTScanAdapter extends BaseAdapter {
 	private static class ViewHolder {
-        public TextView devName;
-        public TextView devAddr;
-    }
+		public TextView devName;
+		public TextView devAddr;
+	}
 
 	private ArrayList<WWDevice> devList;
 	private LayoutInflater inflater;
@@ -61,23 +61,23 @@ public class BTScanAdapter extends BaseAdapter {
 	}
 
 	public View getView(int position, View convertView, ViewGroup parent) {
-        ViewHolder holder;
+		ViewHolder holder;
 
-        if (convertView == null) {
-            convertView = inflater.inflate(R.layout.bt_row, parent, false);
-            holder = new ViewHolder();
-            holder.devName = (TextView)convertView.findViewById(R.id.dev_name);
-            holder.devAddr = (TextView)convertView.findViewById(R.id.dev_addr);
-            convertView.setTag(holder);
-        } else {
-            holder = (ViewHolder)convertView.getTag();
-        }
+		if (convertView == null) {
+			convertView = inflater.inflate(R.layout.bt_row, parent, false);
+			holder = new ViewHolder();
+			holder.devName = (TextView)convertView.findViewById(R.id.dev_name);
+			holder.devAddr = (TextView)convertView.findViewById(R.id.dev_addr);
+			convertView.setTag(holder);
+		} else {
+			holder = (ViewHolder)convertView.getTag();
+		}
 
-        WWDevice device = devList.get(position);
-        holder.devName.setText(device.getName());
-        holder.devAddr.setText(device.getAddress());
+		WWDevice device = devList.get(position);
+		holder.devName.setText(device.getName());
+		holder.devAddr.setText(device.getAddress());
 
-        return convertView;
+		return convertView;
 	}
 
 	public void clear() {
