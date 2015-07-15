@@ -329,7 +329,7 @@ public class WWatcher extends Activity {
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		switch (requestCode) {
 			case REQ_ENABLE_BT:
-				boolean btEnabled = (resultCode == RESULT_OK);
+				btEnabled = (resultCode == RESULT_OK);
 				configureButton(btEnabled, false);
 				break;
 			case REQ_PICK_DEV:
