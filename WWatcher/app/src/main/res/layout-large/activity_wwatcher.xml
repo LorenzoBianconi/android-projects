@@ -65,7 +65,7 @@
 
             <view
                 class="com.txusballesteros.widgets.FitChart"
-                style="@style/chart_style"
+                style="@style/chart_style_large"
                 android:layout_gravity="center"
                 app:animationMode="overdraw"
                 android:id="@+id/rh_view" />
