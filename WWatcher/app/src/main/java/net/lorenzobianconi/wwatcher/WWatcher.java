@@ -1,7 +1,9 @@
 package net.lorenzobianconi.wwatcher;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,23 +40,40 @@ import com.txusballesteros.widgets.FitChartValue;
 public class WWatcher extends Activity {
 	private final String WWATCHER_TAG = "WWATCHER_TAG";
 
+	private class Sample {
+		private float temp;
+		private float rH;
+
+		Sample(float temp, float rH) {
+			this.temp = temp;
+			this.rH = rH;
+		}
+
+		float getTemp() { return temp; }
+		float getrH() { return rH; }
+	}
+
 	static final int RX_SAMPLE_MSG = 0;
 	static final int BT_DISCONNECTED_MSG = 1;
 	class WWHandler extends Handler {
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
 				case RX_SAMPLE_MSG:
-					byte[] samples = (byte[])msg.obj;
-					float temp = samples[0], rH = samples[1];
+					Sample samples = (Sample)msg.obj;
+					float temp = samples.getTemp();
+					float rH = samples.getrH();
 					Log.d(WWATCHER_TAG, "temperature: " + temp + "C rH: " + rH + "%");
 					Resources resources = getResources();
 					Collection<FitChartValue> tempValues = new ArrayList<>();
 					if (temp < 10)
-						tempValues.add(new FitChartValue(temp + 30, resources.getColor(R.color.cold_temp)));
+						tempValues.add(new FitChartValue(temp + 30,
+								resources.getColor(R.color.cold_temp)));
 					else if (temp <= 25)
-						tempValues.add(new FitChartValue(temp + 30, resources.getColor(R.color.good_temp)));
+						tempValues.add(new FitChartValue(temp + 30,
+								resources.getColor(R.color.good_temp)));
 					else
-						tempValues.add(new FitChartValue(temp + 30, resources.getColor(R.color.hot_temp)));
+						tempValues.add(new FitChartValue(temp + 30,
+								resources.getColor(R.color.hot_temp)));
 					tempChart.setValues(tempValues);
 					currTemp.setText(resources.getString(R.string.temp) + ":\n" + temp + "C");
 					Collection<FitChartValue> rHValues = new ArrayList<>();
@@ -161,28 +180,31 @@ public class WWatcher extends Activity {
 
 		public void run() {
 			try {
-				byte[] result = new byte[2];
-				byte[] buffer = new byte[1];
+				BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
 				while (btSock.isConnected() == true) {
 					/* get temperature info */
 					os.write(SAMPLING_TEMP.getBytes());
-					sleep(200);
-					is.read(buffer);
-					result[0] = buffer[0];
+					sleep(500);
+
+					float temp = Float.parseFloat(br.readLine());
+
 					/* get relative humidity info */
 					os.write(SAMPLING_RH.getBytes());
-					sleep(200);
-					is.read(buffer);
-					result[1] = buffer[0];
+					sleep(500);
+
+					float rH = Float.parseFloat(br.readLine());
+
 					/* send data to UI thread */
-					Message msg = Message.obtain(handler, RX_SAMPLE_MSG, result);
+					Message msg = Message.obtain(handler, RX_SAMPLE_MSG, new Sample(temp, rH));
 					msg.sendToTarget();
+
 					sleep(SAMPLING_TO);
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			} catch (InterruptedException e) {
+				e.printStackTrace();
 			} finally {
 				Message msg = Message.obtain(handler, BT_DISCONNECTED_MSG);
 				msg.sendToTarget();
