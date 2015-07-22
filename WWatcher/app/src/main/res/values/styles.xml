@@ -22,4 +22,9 @@
         <item name="android:layout_height">@dimen/chart_size</item>
     </style>
 
+    <style name="chart_style_large">
+        <item name="android:layout_width">@dimen/chart_size_large</item>
+        <item name="android:layout_height">@dimen/chart_size_large</item>
+    </style>
+
 </resources>

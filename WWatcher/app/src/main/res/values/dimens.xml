@@ -6,7 +6,9 @@
     <dimen name="dialog_horizontal_margin">4dp</dimen>
     <dimen name="dialog_vertical_margin">4dp</dimen>
 
-    <dimen name="chart_size">280dp</dimen>
-    <dimen name="stroke_size">18dp</dimen>
+    <dimen name="chart_size_large">420dp</dimen>
+    <dimen name="chart_size">220dp</dimen>
 
-</resources>
+    <dimen name="default_stroke_size">15dp</dimen>
+
+\</resources>
