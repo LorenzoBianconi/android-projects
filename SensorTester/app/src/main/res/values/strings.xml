@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">SensorTester</string>
+    <string name="sensor_plot_tilte">Sensor Data Chart</string>
+</resources>
