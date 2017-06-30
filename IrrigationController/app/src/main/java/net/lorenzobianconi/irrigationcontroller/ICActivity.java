@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
+import android.os.SystemClock;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -48,7 +49,7 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 public class ICActivity extends AppCompatActivity {
-    private final String ICONTROLLER_TAG = "ICONTROLLER_TAG";
+    final String ICONTROLLER_TAG = "ICONTROLLER_TAG";
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -106,6 +107,11 @@ public class ICActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+            } else if (action.equals(ACTION_IC_BT_TX)) {
+                if (mRFChannel != null && mSocket.isConnected()) {
+                    String conf = intent.getStringExtra("TX_CONF");
+                    mRFChannel.write(conf);
+                }
             }
         }
     };
@@ -139,7 +145,8 @@ public class ICActivity extends AppCompatActivity {
                 mDisconButton.setClickable(true);
                 mRFChannel = new RFChannelTread();
                 mRFChannel.start();
-                mRFChannel.write("GET");
+                SystemClock.sleep(2500);
+                mRFChannel.write("<GET>");
             }
         }
     }
@@ -172,6 +179,7 @@ public class ICActivity extends AppCompatActivity {
             try {
                 OutputStream mOutStream = mSocket.getOutputStream();
                 mOutStream.write(data.getBytes());
+                mOutStream.flush();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -184,11 +192,6 @@ public class ICActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
-    }
-
-    public void txMessage(String conf) {
-        if (mRFChannel != null && mSocket.isConnected())
-            mRFChannel.write(conf);
     }
 
     protected void onCreate(Bundle savedInstanceState) {
@@ -286,13 +289,15 @@ public class ICActivity extends AppCompatActivity {
     }
 
     static final String ACTION_IC_BT_RESET = "BT_RESET";
+    static final String ACTION_IC_BT_TX = "TX_MESSAGE";
 
     protected void onResume() {
         super.onResume();
         registerReceiver(mBluetoothReceiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
-        registerReceiver(mBluetoothReceiver, new IntentFilter(ACTION_IC_BT_RESET));
         registerReceiver(mBluetoothReceiver,
                 new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED));
+        registerReceiver(mBluetoothReceiver, new IntentFilter(ACTION_IC_BT_RESET));
+        registerReceiver(mBluetoothReceiver, new IntentFilter(ACTION_IC_BT_TX));
     }
 
     protected void onPause() {
@@ -338,77 +343,73 @@ public class ICActivity extends AppCompatActivity {
     public static class RelayChannelFragment extends Fragment {
         private static final String ARG_SECTION_NUMBER = "section_number";
 
-        public class UIRelay {
-            private class UIRelayTimeSlot {
-                private Switch mEnabled;
-                private EditText mStart;
-                private EditText mStop;
+        private class UIRelayTimeSlot {
+            private Switch mTimeSlotEnable;
+            private EditText mTimeSlotStart;
+            private EditText mTimeSlotStop;
 
-                public UIRelayTimeSlot(Switch enabled, EditText start, EditText stop) {
-                    mEnabled = enabled;
-                    mStart = start;
-                    mStop = stop;
-                }
+            private int mTimeSlotIndex;
+            private int mChannelIndex;
 
-                public void setEnable(boolean enable) {
-                    mEnabled.setChecked(enable);
-                    mStart.setEnabled(enable);
-                    mStop.setEnabled(enable);
-                }
+            public UIRelayTimeSlot(Switch enabled, EditText start, EditText stop,
+                                   int chanIndex, int timeSlotIndexindex) {
+                mChannelIndex = chanIndex;
+                mTimeSlotIndex = timeSlotIndexindex;
 
-                public void update(String start, String stop, boolean enable) {
-                    mEnabled.setChecked(enable);
-                    mStart.setText(start);
-                    mStop.setText(stop);
-                }
-            }
+                mTimeSlotStart = start;
+                mTimeSlotStop = stop;
+                mTimeSlotEnable = enabled;
+                mTimeSlotEnable.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View view) {
+                        String xml = getXmlConf();
+                        Intent intent = new Intent(ACTION_IC_BT_TX);
+                        intent.putExtra("TX_CONF", xml);
+                        getActivity().sendBroadcast(intent);
 
-            private ArrayList<UIRelayTimeSlot> mTimeSlotList;
-            private Switch mSwitch;
-
-            public UIRelay(View view, final int index) {
-                mSwitch = (Switch) view.findViewById(R.id.switchEnable);
-                mSwitch.setText("Enable channel " + index);
-                mSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                    public void onCheckedChanged(CompoundButton compoundButton, boolean enabled) {
-                        if (enabled == true) {
-                            mActivity.txMessage("");
-                        }
-                        for (UIRelayTimeSlot phase: mTimeSlotList) {
-                            phase.setEnable(!enabled);
-                        }
+                        mTimeSlotStart.setEnabled(!mTimeSlotEnable.isChecked());
+                        mTimeSlotStop.setEnabled(!mTimeSlotEnable.isChecked());
                     }
                 });
 
-                mTimeSlotList = new ArrayList<UIRelayTimeSlot>();
-                mTimeSlotList.add(new UIRelayTimeSlot((Switch) view.findViewById(R.id.p1Enable),
-                        (EditText) view.findViewById(R.id.p1StartTime),
-                        (EditText) view.findViewById(R.id.p1StopTime)));
-                mTimeSlotList.add(new UIRelayTimeSlot((Switch) view.findViewById(R.id.p2Enable),
-                        (EditText) view.findViewById(R.id.p2StartTime),
-                        (EditText) view.findViewById(R.id.p2StopTime)));
-                mTimeSlotList.add(new UIRelayTimeSlot((Switch) view.findViewById(R.id.p3Enable),
-                        (EditText) view.findViewById(R.id.p3StartTime),
-                        (EditText) view.findViewById(R.id.p3StopTime)));
-                mTimeSlotList.add(new UIRelayTimeSlot((Switch) view.findViewById(R.id.p4Enable),
-                        (EditText) view.findViewById(R.id.p4StartTime),
-                        (EditText) view.findViewById(R.id.p4StopTime)));
+                Intent intent = new Intent(ACTION_IC_BT_TX);
+                intent.putExtra("TX_CONF", "<GET>");
+                getActivity().sendBroadcast(intent);
             }
 
-            public void updateTimeSlot(int index, String start, String stop, boolean enable) {
-                UIRelayTimeSlot UITimeSlot = mTimeSlotList.get(index);
-                UITimeSlot.update(start, stop, enable);
+            public void updateUI(String startTime, String stopTime, boolean enabled) {
+                mTimeSlotEnable.setChecked(enabled);
+                mTimeSlotStart.setText(startTime);
+                mTimeSlotStop.setText(stopTime);
+                if (enabled == true) {
+                    mTimeSlotStart.setEnabled(false);
+                    mTimeSlotStop.setEnabled(false);
+                }
             }
 
-            public void updateEnable(boolean enable) {
-                mSwitch.setChecked(enable);
+            public String getXmlConf() {
+                String xml = "";
+
+                xml += "<SET ch=\"";
+                xml += mChannelIndex;
+                xml += "\" idx=\"";
+                xml += mTimeSlotIndex;
+                xml += "\" en=\"";
+                xml += mTimeSlotEnable.isChecked() ? 1 : 0;
+                xml += "\" bt=\"";
+                xml += mTimeSlotStart.getText();
+                xml += "\" et=\"";
+                xml += mTimeSlotStop.getText();
+                xml += "\"/>";
+
+                return xml;
             }
         }
 
-        private ICActivity mActivity;
-        private UIRelay mUIRelay;
+        private ArrayList<UIRelayTimeSlot> mTimeSlotList;
+        private TextView channelIndex;
 
         public RelayChannelFragment() {
+            mTimeSlotList = new ArrayList<UIRelayTimeSlot>();
         }
 
         /**
@@ -426,25 +427,35 @@ public class ICActivity extends AppCompatActivity {
 
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState) {
-            View rootView;
+            View rootView = inflater.inflate(R.layout.channel_ic, container, false);
             int index = getArguments().getInt(ARG_SECTION_NUMBER);
 
-            rootView = inflater.inflate(R.layout.channel_ic, container, false);
-            mUIRelay = new UIRelay(rootView, index);
+            channelIndex = (TextView) rootView.findViewById(R.id.textChannel);
+            channelIndex.setText("Relay Channel " + index);
+
+            mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p1Enable),
+                    (EditText) rootView.findViewById(R.id.p1StartTime),
+                    (EditText) rootView.findViewById(R.id.p1StopTime), index, 0));
+            mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p2Enable),
+                    (EditText) rootView.findViewById(R.id.p2StartTime),
+                    (EditText) rootView.findViewById(R.id.p2StopTime), index, 1));
+            mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p3Enable),
+                    (EditText) rootView.findViewById(R.id.p3StartTime),
+                    (EditText) rootView.findViewById(R.id.p3StopTime), index, 2));
+            mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p4Enable),
+                    (EditText) rootView.findViewById(R.id.p4StartTime),
+                    (EditText) rootView.findViewById(R.id.p4StopTime), index, 3));
+
             return rootView;
         }
 
         public void onActivityCreated(Bundle saveInstance) {
             super.onActivityCreated(saveInstance);
-            mActivity = (ICActivity) getActivity();
-            mActivity.txMessage("GET");
         }
 
-        public void updateUIRelay(boolean enable, int index,
-                                  String startTime, String stopTime,
-                                  boolean tsEnabled) {
-            mUIRelay.updateEnable(enable);
-            mUIRelay.updateTimeSlot(index, startTime, stopTime, tsEnabled);
+        public void setUIRelayTimeSlot(int index, String startTime, String stopTime,
+                                    boolean tsEnabled) {
+            mTimeSlotList.get(index).updateUI(startTime, stopTime, tsEnabled);
         }
     }
 
@@ -480,27 +491,25 @@ public class ICActivity extends AppCompatActivity {
 
                 while (event != XmlPullParser.END_DOCUMENT)  {
                     String name = mXmlConfParser.getName();
-                    if (name == null || name.equals("time_slot") == false) {
+                    if (name == null || name.equals("ts") == false) {
                         event = mXmlConfParser.next();
                         continue;
                     }
 
                     int channel =
-                            Integer.parseInt(mXmlConfParser.getAttributeValue(null, "channel"));
-                    boolean enabled =
-                            mXmlConfParser.getAttributeValue(null, "channel_enabled").equals("1");
-                    int index = Integer.parseInt(mXmlConfParser.getAttributeValue(null, "index"));
+                            Integer.parseInt(mXmlConfParser.getAttributeValue(null, "chan"));
+                    int index = Integer.parseInt(mXmlConfParser.getAttributeValue(null, "idx"));
                     boolean tsEnabled =
-                            mXmlConfParser.getAttributeValue(null, "enabled").equals("1");
-                    String startTime = mXmlConfParser.getAttributeValue(null, "start_time");
-                    String stopTime = mXmlConfParser.getAttributeValue(null, "stop_time");
+                            mXmlConfParser.getAttributeValue(null, "en").equals("1");
+                    String startTime = mXmlConfParser.getAttributeValue(null, "bt");
+                    String stopTime = mXmlConfParser.getAttributeValue(null, "et");
 
                     switch (event) {
                         case XmlPullParser.START_TAG:
                             break;
                         case XmlPullParser.END_TAG: {
                             if (mFragments.size() > channel) {
-                                mFragments.get(channel).updateUIRelay(enabled, index, startTime,
+                                mFragments.get(channel).setUIRelayTimeSlot(index, startTime,
                                         stopTime, tsEnabled);
                             }
                             break;
@@ -518,20 +527,23 @@ public class ICActivity extends AppCompatActivity {
                 String action = intent.getAction();
                 if (action.equals(ACTION_IC_RX_CONF)) {
                     String buffer = intent.getStringExtra("RX_CONF");
-                    if (buffer.length() > 0)
+                    if (buffer.length() > 0) {
                         try {
-                            mSectionsPagerAdapter.parseRxMessage(intent.getStringExtra("RX_CONF"));
+                            String data = intent.getStringExtra("RX_CONF");
+                            Log.d(ICONTROLLER_TAG, data);
+                            mSectionsPagerAdapter.parseRxMessage(data);
                         } catch (XmlPullParserException e) {
                             e.printStackTrace();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
+                    }
                 }
             }
         };
 
         public Fragment getItem(int position) {
-            mFragments.add(position, RelayChannelFragment.newInstance(position + 1));
+            mFragments.add(position, RelayChannelFragment.newInstance(position));
             return mFragments.get(position);
         }
 

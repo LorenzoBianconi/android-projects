@@ -8,18 +8,19 @@
     android:paddingTop="90dp"
     tools:context="net.lorenzobianconi.irrigationcontroller.ICActivity$PlaceholderFragment">
 
-    <Switch
-        android:id="@+id/switchEnable"
+    <TextView
+        android:id="@+id/textChannel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Enable channel"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:text="Relay Channel" />
 
     <LinearLayout
         android:id="@+id/phase1"
+        android:paddingTop="20dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/switchEnable"
+        android:layout_below="@+id/textChannel"
         android:orientation="horizontal">
 
         <TextView
@@ -34,9 +35,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ems="10"
+            android:inputType="time"
             android:text="00:00"
-            android:textAlignment="center"
-            android:inputType="time" />
+            android:textAlignment="center" />
 
         <TextView
             android:id="@+id/p1StopTextView"
