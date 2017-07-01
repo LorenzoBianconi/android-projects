@@ -17,6 +17,8 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -25,7 +27,6 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Switch;
@@ -45,7 +46,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.sql.Time;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.UUID;
 
 public class ICActivity extends AppCompatActivity {
@@ -147,6 +152,7 @@ public class ICActivity extends AppCompatActivity {
                 mRFChannel.start();
                 SystemClock.sleep(2500);
                 mRFChannel.write("<GET>");
+                mRFChannel.write("<TIME value=\"" + getCurrentTime() + "\" />");
             }
         }
     }
@@ -271,6 +277,12 @@ public class ICActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    public String getCurrentTime() {
+        DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+        Calendar cal = Calendar.getInstance();
+        return dateFormat.format(cal.getTime());
+    }
+
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
             case REQ_ENABLE_BT:
@@ -356,8 +368,57 @@ public class ICActivity extends AppCompatActivity {
                 mChannelIndex = chanIndex;
                 mTimeSlotIndex = timeSlotIndexindex;
 
+                class TimeWatecher implements TextWatcher {
+                    private EditText mEditText;
+
+                    TimeWatecher(EditText editText) {
+                        mEditText = editText;
+                    }
+
+                    public void beforeTextChanged(CharSequence charSequence, int i,
+                                                  int i1, int i2) {
+                    }
+
+                    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                    }
+
+                    public void afterTextChanged(Editable editable) {
+                        int len = mEditText.length();
+                        switch (len) {
+                            case 1:
+                            case 2:
+                                try {
+                                    Integer.parseInt(editable.toString());
+                                } catch (NumberFormatException e) {
+                                    mEditText.setError("hh:mm");
+                                    e.printStackTrace();
+                                }
+                                break;
+                            case 3:
+                                String delimiter = editable.toString().substring(2, 3);
+                                if (delimiter.equals(":") == false)
+                                    mEditText.setError("hh:mm");
+                                break;
+                            case 4:
+                            case 5:
+                                try {
+                                    Integer.parseInt(editable.toString().substring(3, len));
+                                } catch (NumberFormatException e) {
+                                    mEditText.setError("hh:mm");
+                                    e.printStackTrace();
+                                }
+                                break;
+                            default:
+                                mEditText.setError("hh:mm");
+                                break;
+                        }
+                    }
+                }
+
                 mTimeSlotStart = start;
+                mTimeSlotStart.addTextChangedListener(new TimeWatecher(mTimeSlotStart));
                 mTimeSlotStop = stop;
+                mTimeSlotStop.addTextChangedListener(new TimeWatecher(mTimeSlotStop));
                 mTimeSlotEnable = enabled;
                 mTimeSlotEnable.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View view) {
@@ -366,8 +427,9 @@ public class ICActivity extends AppCompatActivity {
                         intent.putExtra("TX_CONF", xml);
                         getActivity().sendBroadcast(intent);
 
-                        mTimeSlotStart.setEnabled(!mTimeSlotEnable.isChecked());
-                        mTimeSlotStop.setEnabled(!mTimeSlotEnable.isChecked());
+                        boolean value = mTimeSlotEnable.isChecked();
+                        mTimeSlotStart.setEnabled(!value);
+                        mTimeSlotStop.setEnabled(!value);
                     }
                 });
 
@@ -379,11 +441,9 @@ public class ICActivity extends AppCompatActivity {
             public void updateUI(String startTime, String stopTime, boolean enabled) {
                 mTimeSlotEnable.setChecked(enabled);
                 mTimeSlotStart.setText(startTime);
+                mTimeSlotStart.setEnabled(!enabled);
                 mTimeSlotStop.setText(stopTime);
-                if (enabled == true) {
-                    mTimeSlotStart.setEnabled(false);
-                    mTimeSlotStop.setEnabled(false);
-                }
+                mTimeSlotStop.setEnabled(!enabled);
             }
 
             public String getXmlConf() {
@@ -445,6 +505,12 @@ public class ICActivity extends AppCompatActivity {
             mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p4Enable),
                     (EditText) rootView.findViewById(R.id.p4StartTime),
                     (EditText) rootView.findViewById(R.id.p4StopTime), index, 3));
+            mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p5Enable),
+                    (EditText) rootView.findViewById(R.id.p5StartTime),
+                    (EditText) rootView.findViewById(R.id.p5StopTime), index, 4));
+            mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p6Enable),
+                    (EditText) rootView.findViewById(R.id.p6StartTime),
+                    (EditText) rootView.findViewById(R.id.p6StopTime), index, 5));
 
             return rootView;
         }
