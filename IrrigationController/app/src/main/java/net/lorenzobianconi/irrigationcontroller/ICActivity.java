@@ -46,7 +46,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.sql.Time;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -151,7 +150,6 @@ public class ICActivity extends AppCompatActivity {
                 mRFChannel = new RFChannelTread();
                 mRFChannel.start();
                 SystemClock.sleep(2500);
-                mRFChannel.write("<GET>");
                 mRFChannel.write("<TIME value=\"" + getCurrentTime() + "\" />");
             }
         }
@@ -371,6 +369,16 @@ public class ICActivity extends AppCompatActivity {
                 class TimeWatecher implements TextWatcher {
                     private EditText mEditText;
 
+                    private boolean isDelimiter(String data, int len) {
+                        String delimiter = data.substring(len - 1, len);
+                        return delimiter.equals(":");
+                    }
+
+                    private void isDigit(String data, int len) throws NumberFormatException {
+                        String value = data.substring(len - 1, len);
+                        Integer.parseInt(value);
+                    }
+
                     TimeWatecher(EditText editText) {
                         mEditText = editText;
                     }
@@ -384,33 +392,31 @@ public class ICActivity extends AppCompatActivity {
 
                     public void afterTextChanged(Editable editable) {
                         int len = mEditText.length();
-                        switch (len) {
-                            case 1:
-                            case 2:
-                                try {
-                                    Integer.parseInt(editable.toString());
-                                } catch (NumberFormatException e) {
-                                    mEditText.setError("hh:mm");
-                                    e.printStackTrace();
+                        try {
+                            switch (len) {
+                                case 4:
+                                case 1:
+                                    isDigit(editable.toString(), len);
+                                    break;
+                                case 3:
+                                case 2:
+                                    if (!isDelimiter(editable.toString(), len))
+                                        isDigit(editable.toString(), len);
+                                    break;
+                                case 5: {
+                                    String data = editable.toString();
+                                    if (data.indexOf(":") == 1)
+                                        throw new NumberFormatException();
+                                    else
+                                        isDigit(data, len);
+                                    break;
                                 }
-                                break;
-                            case 3:
-                                String delimiter = editable.toString().substring(2, 3);
-                                if (delimiter.equals(":") == false)
-                                    mEditText.setError("hh:mm");
-                                break;
-                            case 4:
-                            case 5:
-                                try {
-                                    Integer.parseInt(editable.toString().substring(3, len));
-                                } catch (NumberFormatException e) {
-                                    mEditText.setError("hh:mm");
-                                    e.printStackTrace();
+                                default:
+                                    throw new NumberFormatException();
                                 }
-                                break;
-                            default:
-                                mEditText.setError("hh:mm");
-                                break;
+                        } catch (NumberFormatException e) {
+                            mEditText.setError("hh:mm");
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -479,7 +485,7 @@ public class ICActivity extends AppCompatActivity {
         public static RelayChannelFragment newInstance(int sectionNumber) {
             RelayChannelFragment fragment = new RelayChannelFragment();
             Bundle args = new Bundle();
-            
+
             args.putInt(ARG_SECTION_NUMBER, sectionNumber);
             fragment.setArguments(args);
             return fragment;
