@@ -1,5 +1,6 @@
 package net.lorenzobianconi.irrigationcontroller;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -9,6 +10,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.SystemClock;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -53,7 +55,15 @@ import java.util.Calendar;
 import java.util.UUID;
 
 public class ICActivity extends AppCompatActivity {
-    final String ICONTROLLER_TAG = "ICONTROLLER_TAG";
+    static final String ICONTROLLER_TAG = "ICONTROLLER_TAG";
+
+    static final String ACTION_IC_BT_RESET = "BT_RESET";
+    static final String ACTION_IC_BT_TX = "TX_MESSAGE";
+    static final String ACTION_IC_RX_CONF = "IC_RX_CONF";
+    static final int REQ_ENABLE_BT = 1;
+    static final int REQ_PICK_BT_DEV = 3;
+    static final int RELAY_DEPTH = 4;
+    static final int REQ_CODE_LOC = 2;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -69,15 +79,12 @@ public class ICActivity extends AppCompatActivity {
      * The {@link ViewPager} that will host the section contents.
      */
     private ViewPager mViewPager;
+    private LinearLayout mProgressBarLayout;
 
     private Button mDisconButton;
     private Button mScanButton;
     private TextView mStatusText;
 
-    private LinearLayout mProgressBarLayout;
-
-    private final static int REQ_ENABLE_BT = 1;
-    private final static int REQ_PICK_BT_DEV = 3;
     private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     private ArrayList<BluetoothDevice> mScanList = new ArrayList<>();
     private RFChannelTread mRFChannel;
@@ -214,6 +221,9 @@ public class ICActivity extends AppCompatActivity {
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
+        mViewPager.setOffscreenPageLimit(RELAY_DEPTH - 1);
+
+        mStatusText = (TextView)findViewById(R.id.statusTextView);
 
         mDisconButton = (Button)findViewById(R.id.disconnect);
         mDisconButton.setOnClickListener(new View.OnClickListener() {
@@ -224,8 +234,6 @@ public class ICActivity extends AppCompatActivity {
             }
         });
         mDisconButton.setClickable(false);
-
-        mStatusText = (TextView)findViewById(R.id.statusTextView);
 
         mScanButton = (Button)findViewById(R.id.scanning);
         mScanButton.setOnClickListener(new View.OnClickListener() {
@@ -245,13 +253,14 @@ public class ICActivity extends AppCompatActivity {
 			/* BT stack not supported */
             Toast.makeText(this, "Bluetooth not available", Toast.LENGTH_LONG).show();
             finish();
-        } else if (mRadio.isEnabled() == false) {
-			/* Request to enable BT */
-            Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(intent, REQ_ENABLE_BT);
-        } else {
-            if (checkLocationPermission() == true)
+        } else if (checkPermission() == true) {
+            if (mRadio.isEnabled() == false) {
+                /* Request to enable BT */
+                Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(intent, REQ_ENABLE_BT);
+            } else {
                 mScanButton.setClickable(true);
+            }
         }
     }
 
@@ -275,7 +284,7 @@ public class ICActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public String getCurrentTime() {
+    private String getCurrentTime() {
         DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
         Calendar cal = Calendar.getInstance();
         return dateFormat.format(cal.getTime());
@@ -284,8 +293,7 @@ public class ICActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
             case REQ_ENABLE_BT:
-                if (requestCode == RESULT_OK && checkLocationPermission() == true)
-                    mScanButton.setClickable(true);
+                mScanButton.setClickable(mRadio.isEnabled());
                 break;
             case REQ_PICK_BT_DEV:
                 if (data != null) {
@@ -297,9 +305,6 @@ public class ICActivity extends AppCompatActivity {
                 break;
         }
     }
-
-    static final String ACTION_IC_BT_RESET = "BT_RESET";
-    static final String ACTION_IC_BT_TX = "TX_MESSAGE";
 
     protected void onResume() {
         super.onResume();
@@ -315,13 +320,12 @@ public class ICActivity extends AppCompatActivity {
         unregisterReceiver(mBluetoothReceiver);
     }
 
-    private final static int REQ_CODE_LOC = 2;
-
-    private boolean checkLocationPermission() {
+    private boolean checkPermission() {
         /* request discovery permissions if necessary */
-        if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) !=
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) !=
                 PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{ android.Manifest.permission.ACCESS_COARSE_LOCATION },
+            ActivityCompat.requestPermissions(this, new String[] {
+                            android.Manifest.permission.ACCESS_COARSE_LOCATION },
                     REQ_CODE_LOC);
             return false;
         }
@@ -334,12 +338,18 @@ public class ICActivity extends AppCompatActivity {
                 if (results.length > 0) {
                     for (int r : results) {
                         if (r != PackageManager.PERMISSION_GRANTED) {
-                            Toast.makeText(this, "Location permission not granted",
+                            Toast.makeText(this, "Location permission not granted, scan will fail",
                                     Toast.LENGTH_LONG).show();
                             return;
                         }
                     }
-                    mScanButton.setClickable(true);
+                    if (mRadio.isEnabled() == false) {
+                            /* Request to enable BT */
+                        Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                        startActivityForResult(intent, REQ_ENABLE_BT);
+                    } else {
+                        mScanButton.setClickable(true);
+                    }
                 }
                 break;
             default:
@@ -354,6 +364,61 @@ public class ICActivity extends AppCompatActivity {
         private static final String ARG_SECTION_NUMBER = "section_number";
 
         private class UIRelayTimeSlot {
+            private class TimeWatecher implements TextWatcher {
+                private EditText mEditText;
+
+                private boolean isDelimiter(String data, int len) {
+                    String delimiter = data.substring(len - 1, len);
+                    return delimiter.equals(":");
+                }
+
+                private void isDigit(String data, int len) throws NumberFormatException {
+                    String value = data.substring(len - 1, len);
+                    Integer.parseInt(value);
+                }
+
+                TimeWatecher(EditText editText) {
+                    mEditText = editText;
+                }
+
+                public void beforeTextChanged(CharSequence charSequence, int i,
+                                              int i1, int i2) {
+                }
+
+                public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                }
+
+                public void afterTextChanged(Editable editable) {
+                    int len = mEditText.length();
+                    try {
+                        switch (len) {
+                            case 4:
+                            case 1:
+                                isDigit(editable.toString(), len);
+                                break;
+                            case 3:
+                            case 2:
+                                if (!isDelimiter(editable.toString(), len))
+                                    isDigit(editable.toString(), len);
+                                break;
+                            case 5: {
+                                String data = editable.toString();
+                                if (data.indexOf(":") == 1)
+                                    throw new NumberFormatException();
+                                else
+                                    isDigit(data, len);
+                                break;
+                            }
+                            default:
+                                throw new NumberFormatException();
+                        }
+                    } catch (NumberFormatException e) {
+                        mEditText.setError("hh:mm");
+                        e.printStackTrace();
+                    }
+                }
+            }
+
             private Switch mTimeSlotEnable;
             private EditText mTimeSlotStart;
             private EditText mTimeSlotStop;
@@ -361,71 +426,13 @@ public class ICActivity extends AppCompatActivity {
             private int mTimeSlotIndex;
             private int mChannelIndex;
 
-            public UIRelayTimeSlot(Switch enabled, EditText start, EditText stop,
-                                   int chanIndex, int timeSlotIndexindex) {
+            public UIRelayTimeSlot(Switch timeSlotEnabled, EditText timeSlotStart,
+                                   EditText timeSlotStop, int chanIndex,
+                                   int timeSlotIndexindex) {
                 mChannelIndex = chanIndex;
                 mTimeSlotIndex = timeSlotIndexindex;
 
-                class TimeWatecher implements TextWatcher {
-                    private EditText mEditText;
-
-                    private boolean isDelimiter(String data, int len) {
-                        String delimiter = data.substring(len - 1, len);
-                        return delimiter.equals(":");
-                    }
-
-                    private void isDigit(String data, int len) throws NumberFormatException {
-                        String value = data.substring(len - 1, len);
-                        Integer.parseInt(value);
-                    }
-
-                    TimeWatecher(EditText editText) {
-                        mEditText = editText;
-                    }
-
-                    public void beforeTextChanged(CharSequence charSequence, int i,
-                                                  int i1, int i2) {
-                    }
-
-                    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                    }
-
-                    public void afterTextChanged(Editable editable) {
-                        int len = mEditText.length();
-                        try {
-                            switch (len) {
-                                case 4:
-                                case 1:
-                                    isDigit(editable.toString(), len);
-                                    break;
-                                case 3:
-                                case 2:
-                                    if (!isDelimiter(editable.toString(), len))
-                                        isDigit(editable.toString(), len);
-                                    break;
-                                case 5: {
-                                    String data = editable.toString();
-                                    if (data.indexOf(":") == 1)
-                                        throw new NumberFormatException();
-                                    else
-                                        isDigit(data, len);
-                                    break;
-                                }
-                                default:
-                                    throw new NumberFormatException();
-                                }
-                        } catch (NumberFormatException e) {
-                            mEditText.setError("hh:mm");
-                            e.printStackTrace();
-                        }
-                    }
-                }
-
-                mTimeSlotStart = start;
-                mTimeSlotStart.addTextChangedListener(new TimeWatecher(mTimeSlotStart));
-                mTimeSlotStop = stop;
-                mTimeSlotStop.addTextChangedListener(new TimeWatecher(mTimeSlotStop));
-                mTimeSlotEnable = enabled;
+                mTimeSlotEnable = timeSlotEnabled;
                 mTimeSlotEnable.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View view) {
                         String xml = getXmlConf();
@@ -433,15 +440,16 @@ public class ICActivity extends AppCompatActivity {
                         intent.putExtra("TX_CONF", xml);
                         getActivity().sendBroadcast(intent);
 
-                        boolean value = mTimeSlotEnable.isChecked();
-                        mTimeSlotStart.setEnabled(!value);
-                        mTimeSlotStop.setEnabled(!value);
+                        boolean enabled = mTimeSlotEnable.isChecked();
+                        mTimeSlotStart.setEnabled(!enabled);
+                        mTimeSlotStop.setEnabled(!enabled);
                     }
                 });
 
-                Intent intent = new Intent(ACTION_IC_BT_TX);
-                intent.putExtra("TX_CONF", "<GET>");
-                getActivity().sendBroadcast(intent);
+                mTimeSlotStart = timeSlotStart;
+                mTimeSlotStart.addTextChangedListener(new TimeWatecher(mTimeSlotStart));
+                mTimeSlotStop = timeSlotStop;
+                mTimeSlotStop.addTextChangedListener(new TimeWatecher(mTimeSlotStop));
             }
 
             public void updateUI(String startTime, String stopTime, boolean enabled) {
@@ -511,18 +519,8 @@ public class ICActivity extends AppCompatActivity {
             mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p4Enable),
                     (EditText) rootView.findViewById(R.id.p4StartTime),
                     (EditText) rootView.findViewById(R.id.p4StopTime), index, 3));
-            mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p5Enable),
-                    (EditText) rootView.findViewById(R.id.p5StartTime),
-                    (EditText) rootView.findViewById(R.id.p5StopTime), index, 4));
-            mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p6Enable),
-                    (EditText) rootView.findViewById(R.id.p6StartTime),
-                    (EditText) rootView.findViewById(R.id.p6StopTime), index, 5));
 
             return rootView;
-        }
-
-        public void onActivityCreated(Bundle saveInstance) {
-            super.onActivityCreated(saveInstance);
         }
 
         public void setUIRelayTimeSlot(int index, String startTime, String stopTime,
@@ -531,8 +529,6 @@ public class ICActivity extends AppCompatActivity {
         }
     }
 
-    static final String ACTION_IC_RX_CONF = "IC_RX_CONF";
-    static final int RELAY_DEPTH = 4;
     /**
      * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
      * one of the sections/tabs/pages.
@@ -603,7 +599,7 @@ public class ICActivity extends AppCompatActivity {
                         try {
                             String data = intent.getStringExtra("RX_CONF");
                             Log.d(ICONTROLLER_TAG, data);
-                            mSectionsPagerAdapter.parseRxMessage(data);
+                            parseRxMessage(data);
                         } catch (XmlPullParserException e) {
                             e.printStackTrace();
                         } catch (IOException e) {
