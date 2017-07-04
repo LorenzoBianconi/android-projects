@@ -9,8 +9,10 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
+import android.os.Handler;
 import android.os.SystemClock;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -80,6 +82,7 @@ public class ICActivity extends AppCompatActivity {
      */
     private ViewPager mViewPager;
     private LinearLayout mProgressBarLayout;
+    private SwipeRefreshLayout mRefreshlayout;
 
     private Button mDisconButton;
     private Button mScanButton;
@@ -215,8 +218,24 @@ public class ICActivity extends AppCompatActivity {
         // primary sections of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
-        mProgressBarLayout = (LinearLayout)findViewById(R.id.progress_bar_layout);
+        mProgressBarLayout = (LinearLayout) findViewById(R.id.progress_bar_layout);
         mProgressBarLayout.setVisibility(View.GONE);
+
+        mRefreshlayout = (SwipeRefreshLayout) findViewById(R.id.swiperefresh);
+        mRefreshlayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            public void onRefresh() {
+                if (mRFChannel != null && mSocket.isConnected()) {
+                    mRFChannel.write("<GET>");
+                    new Handler().postDelayed(new Runnable() {
+                        public void run() {
+                            mRefreshlayout.setRefreshing(false);
+                        }
+                    }, 8000);
+                } else {
+                    mRefreshlayout.setRefreshing(false);
+                }
+            }
+        });
 
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.container);
