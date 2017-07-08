@@ -500,6 +500,7 @@ public class ICActivity extends AppCompatActivity {
 
         private ArrayList<UIRelayTimeSlot> mTimeSlotList;
         private TextView channelIndex;
+        private TextView mChannelLog;
 
         public RelayChannelFragment() {
             mTimeSlotList = new ArrayList<UIRelayTimeSlot>();
@@ -525,6 +526,7 @@ public class ICActivity extends AppCompatActivity {
 
             channelIndex = (TextView) rootView.findViewById(R.id.textChannel);
             channelIndex.setText("Relay Channel " + index);
+            mChannelLog = (TextView) rootView.findViewById(R.id.logView);
 
             mTimeSlotList.add(new UIRelayTimeSlot((Switch) rootView.findViewById(R.id.p1Enable),
                     (EditText) rootView.findViewById(R.id.p1StartTime),
@@ -545,6 +547,13 @@ public class ICActivity extends AppCompatActivity {
         public void setUIRelayTimeSlot(int index, String startTime, String stopTime,
                                     boolean tsEnabled) {
             mTimeSlotList.get(index).updateUI(startTime, stopTime, tsEnabled);
+        }
+
+        public void setUIRelayLog(String log) {
+            if (log.length() > 0)
+                mChannelLog.setText(log);
+            else
+                mChannelLog.setText(channelIndex.getText() + ": no event found");
         }
     }
 
@@ -578,28 +587,34 @@ public class ICActivity extends AppCompatActivity {
 
                 while (event != XmlPullParser.END_DOCUMENT)  {
                     String name = mXmlConfParser.getName();
-                    if (name == null || name.equals("ts") == false) {
+                    if (name == null) {
                         event = mXmlConfParser.next();
                         continue;
                     }
 
-                    int channel =
-                            Integer.parseInt(mXmlConfParser.getAttributeValue(null, "chan"));
-                    int index = Integer.parseInt(mXmlConfParser.getAttributeValue(null, "idx"));
-                    boolean tsEnabled =
-                            mXmlConfParser.getAttributeValue(null, "en").equals("1");
-                    String startTime = mXmlConfParser.getAttributeValue(null, "bt");
-                    String stopTime = mXmlConfParser.getAttributeValue(null, "et");
+                    if (name.equals("ts") == true) {
+                        int channel =
+                                Integer.parseInt(mXmlConfParser.getAttributeValue(null, "chan"));
+                        if (mFragments.size() <= channel)
+                            continue;
+                        int index = Integer.parseInt(mXmlConfParser.getAttributeValue(null, "idx"));
+                        boolean tsEnabled =
+                                mXmlConfParser.getAttributeValue(null, "en").equals("1");
+                        String startTime = mXmlConfParser.getAttributeValue(null, "bt");
+                        String stopTime = mXmlConfParser.getAttributeValue(null, "et");
 
-                    switch (event) {
-                        case XmlPullParser.START_TAG:
-                            break;
-                        case XmlPullParser.END_TAG: {
-                            if (mFragments.size() > channel) {
-                                mFragments.get(channel).setUIRelayTimeSlot(index, startTime,
-                                        stopTime, tsEnabled);
-                            }
-                            break;
+                        if (event == XmlPullParser.END_TAG) {
+                            mFragments.get(channel).setUIRelayTimeSlot(index, startTime,
+                                    stopTime, tsEnabled);
+                        }
+                    } else if (name.equals("log") == true) {
+                        int channel =
+                                Integer.parseInt(mXmlConfParser.getAttributeValue(null, "chan"));
+                        if (mFragments.size() <= channel)
+                            continue;
+                        String log = mXmlConfParser.getAttributeValue(null, "log");
+                        if (event == XmlPullParser.END_TAG) {
+                            mFragments.get(channel).setUIRelayLog(log);
                         }
                     }
                     event = mXmlConfParser.next();

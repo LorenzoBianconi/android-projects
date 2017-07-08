@@ -15,12 +15,21 @@
         android:textStyle="bold"
         android:text="Relay Channel" />
 
-    <LinearLayout
-        android:id="@+id/phase1"
-        android:paddingTop="10dp"
+    <TextView
+        android:id="@+id/logView"
+        android:paddingTop="20dp"
+        android:layout_below="@+id/textChannel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/textChannel"
+        android:textStyle="bold"
+        android:text="Latest channel event" />
+
+    <LinearLayout
+        android:id="@+id/phase1"
+        android:paddingTop="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/logView"
         android:orientation="horizontal">
 
         <TextView
