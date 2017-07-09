@@ -267,6 +267,12 @@ public class ICActivity extends AppCompatActivity {
         });
         mScanButton.setClickable(false);
 
+        registerReceiver(mBluetoothReceiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
+        registerReceiver(mBluetoothReceiver,
+                new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED));
+        registerReceiver(mBluetoothReceiver, new IntentFilter(ACTION_IC_BT_RESET));
+        registerReceiver(mBluetoothReceiver, new IntentFilter(ACTION_IC_BT_TX));
+
         mRadio = BluetoothAdapter.getDefaultAdapter();
         if (mRadio == null) {
 			/* BT stack not supported */
@@ -325,17 +331,8 @@ public class ICActivity extends AppCompatActivity {
         }
     }
 
-    protected void onResume() {
-        super.onResume();
-        registerReceiver(mBluetoothReceiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
-        registerReceiver(mBluetoothReceiver,
-                new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED));
-        registerReceiver(mBluetoothReceiver, new IntentFilter(ACTION_IC_BT_RESET));
-        registerReceiver(mBluetoothReceiver, new IntentFilter(ACTION_IC_BT_TX));
-    }
-
-    protected void onPause() {
-        super.onPause();
+    protected void onDestroy() {
+        super.onDestroy();
         unregisterReceiver(mBluetoothReceiver);
     }
 
